@@ -2,17 +2,22 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover" />
+    <!-- Flutter WebView compatible viewport -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover, shrink-to-fit=no" />
+    <!-- PWA / Flutter WebView support -->
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="format-detection" content="telephone=no" />
+    <!-- Theme colors for both modes -->
     <meta name="theme-color" content="#00160D" media="(prefers-color-scheme: dark)" />
     <meta name="theme-color" content="#f0f7f4" media="(prefers-color-scheme: light)" />
-    <meta name="description" content="Digital Tasbeeh Counter - Beautiful Islamic prayer bead counter with multiple sound effects, haptic feedback, and dark/light themes" />
+    <!-- Flutter WebView specific -->
+    <meta name="x-content-type-options" content="nosniff" />
+    <meta name="description" content="Digital Tasbeeh Counter - Islamic prayer bead counter with sound effects, haptic feedback, dark/light themes. Flutter WebView compatible." />
     <title>Digital Tasbeeh Counter</title>
     <style>
-      /* Critical CSS - prevents flash of unstyled content */
+      /* Critical CSS - prevents flash of unstyled content in Flutter WebView */
       html, body {
         margin: 0;
         padding: 0;
@@ -22,6 +27,10 @@
         overflow: hidden;
         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
         -webkit-font-smoothing: antialiased;
+        -webkit-touch-callout: none;
+        -webkit-user-select: none;
+        user-select: none;
+        touch-action: manipulation;
       }
       /* Dark theme default */
       html[data-theme="dark"], html:not([data-theme]) {
@@ -33,7 +42,7 @@
         background-color: #f0f7f4;
         color: #1a1a1a;
       }
-      /* Safe area support */
+      /* Safe area support for notched devices */
       @supports (padding: env(safe-area-inset-top)) {
         body {
           padding-top: env(safe-area-inset-top);
@@ -42,18 +51,45 @@
           padding-right: env(safe-area-inset-right);
         }
       }
+      /* Prevent pull-to-refresh in Flutter WebView */
+      body {
+        overscroll-behavior: none;
+        -webkit-overflow-scrolling: touch;
+      }
     </style>
     <script>
-      // Initialize theme immediately to prevent flash
+      // Initialize theme immediately to prevent flash in Flutter WebView
       (function () {
         var saved = localStorage.getItem('tasbeeh-theme');
         var theme = saved === 'light' ? 'light' : 'dark';
         document.documentElement.setAttribute('data-theme', theme);
         document.documentElement.classList.remove('light', 'dark');
         document.documentElement.classList.add(theme);
+        
+        // Notify Flutter that the page is ready
+        function notifyFlutterReady() {
+          var message = JSON.stringify({ type: 'pageReady', theme: theme, timestamp: Date.now() });
+          if (window.FlutterWebView && window.FlutterWebView.postMessage) {
+            window.FlutterWebView.postMessage(message);
+          }
+          if (window.flutter_inappwebview && window.flutter_inappwebview.callHandler) {
+            window.flutter_inappwebview.callHandler('TasbeehEvent', message);
+          }
+          if (window._FlutterWebViewBridge) {
+            window._FlutterWebViewBridge(message);
+          }
+        }
+        
+        // Notify when DOM is ready
+        if (document.readyState === 'complete') {
+          notifyFlutterReady();
+        } else {
+          window.addEventListener('load', notifyFlutterReady);
+        }
       })();
     </script>
     <script>
+      // Error reporting for Flutter WebView
       (function () {
         if (window.self === window.top) return;
         var reported = {};

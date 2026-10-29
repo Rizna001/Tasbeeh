@@ -75,7 +75,7 @@ button {
 }
 
 button:focus-visible {
-  outline: 2px solid #D4AF37;
+  outline: 2px solid #977529;
   outline-offset: 2px;
 }
 
@@ -90,8 +90,8 @@ input:focus { outline: none; }
 /* ===== SCROLLBAR ===== */
 ::-webkit-scrollbar { width: 4px; height: 0; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgba(212, 175, 55, 0.3); border-radius: 4px; }
-::-webkit-scrollbar-thumb:hover { background: rgba(212, 175, 55, 0.5); }
+::-webkit-scrollbar-thumb { background: rgba(151, 117, 41, 0.3); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(151, 117, 41, 0.5); }
 
 .overflow-x-auto::-webkit-scrollbar { display: none; }
 .overflow-x-auto { -ms-overflow-style: none; scrollbar-width: none; }

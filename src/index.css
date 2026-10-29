@@ -79,16 +79,13 @@ button:focus-visible {
   outline-offset: 2px;
 }
 
-/* ===== INPUT RESET ===== */
 input {
   -webkit-appearance: none;
   appearance: none;
   font-family: inherit;
 }
 
-input:focus {
-  outline: none;
-}
+input:focus { outline: none; }
 
 /* ===== SCROLLBAR ===== */
 ::-webkit-scrollbar { width: 4px; height: 0; }
@@ -96,7 +93,6 @@ input:focus {
 ::-webkit-scrollbar-thumb { background: rgba(212, 175, 55, 0.3); border-radius: 4px; }
 ::-webkit-scrollbar-thumb:hover { background: rgba(212, 175, 55, 0.5); }
 
-/* Hide horizontal scrollbar */
 .overflow-x-auto::-webkit-scrollbar { display: none; }
 .overflow-x-auto { -ms-overflow-style: none; scrollbar-width: none; }
 
@@ -128,11 +124,6 @@ input:focus {
   100% { transform: scale(2.5); opacity: 0; }
 }
 
-@keyframes pulseGlow {
-  0%, 100% { box-shadow: 0 0 20px rgba(212, 175, 55, 0.1); }
-  50% { box-shadow: 0 0 40px rgba(212, 175, 55, 0.3); }
-}
-
 @keyframes shimmer {
   0% { background-position: -200% center; }
   100% { background-position: 200% center; }
@@ -148,6 +139,81 @@ input:focus {
   50% { transform: scale(1.1); }
   100% { transform: scale(1); }
 }
+
+/* ===== ICON ANIMATIONS ===== */
+
+/* Tasbeeh beads - gentle rotation */
+@keyframes tasbeehRotate {
+  0%, 100% { transform: rotate(0deg); }
+  50% { transform: rotate(5deg); }
+}
+
+.animate-tasbeeh {
+  animation: tasbeehRotate 3s ease-in-out infinite;
+}
+
+/* Bell swing */
+@keyframes bellSwing {
+  0%, 100% { transform: rotate(0deg); }
+  25% { transform: rotate(8deg); }
+  75% { transform: rotate(-8deg); }
+}
+
+.animate-bell {
+  animation: bellSwing 1.5s ease-in-out infinite;
+  transform-origin: top center;
+}
+
+/* Sound waves */
+@keyframes wave {
+  0%, 100% { opacity: 0; transform: translateX(0); }
+  50% { opacity: 1; transform: translateX(2px); }
+}
+
+.animate-wave-1 { animation: wave 1s ease-in-out infinite; }
+.animate-wave-2 { animation: wave 1s ease-in-out infinite 0.2s; }
+
+/* Gear rotation */
+@keyframes gearSpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.animate-gear {
+  animation: gearSpin 4s linear infinite;
+}
+
+/* Slow spin for reset */
+.animate-spin-slow {
+  animation: gearSpin 2s linear infinite;
+}
+
+/* Sparkle animation */
+@keyframes sparkle {
+  0%, 100% { transform: scale(1) rotate(0deg); opacity: 1; }
+  25% { transform: scale(1.1) rotate(5deg); opacity: 0.8; }
+  50% { transform: scale(0.95) rotate(-5deg); opacity: 1; }
+  75% { transform: scale(1.05) rotate(3deg); opacity: 0.9; }
+}
+
+.animate-sparkle {
+  animation: sparkle 2s ease-in-out infinite;
+}
+
+/* Bead pulse for tasbeeh icon */
+@keyframes beadPulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.15); opacity: 0.8; }
+}
+
+.animate-bead-1 { animation: beadPulse 2s ease-in-out infinite 0s; }
+.animate-bead-2 { animation: beadPulse 2s ease-in-out infinite 0.15s; }
+.animate-bead-3 { animation: beadPulse 2s ease-in-out infinite 0.3s; }
+.animate-bead-4 { animation: beadPulse 2s ease-in-out infinite 0.45s; }
+.animate-bead-5 { animation: beadPulse 2s ease-in-out infinite 0.6s; }
+.animate-bead-6 { animation: beadPulse 2s ease-in-out infinite 0.75s; }
+.animate-bead-7 { animation: beadPulse 2s ease-in-out infinite 0.9s; }
+.animate-bead-8 { animation: beadPulse 2s ease-in-out infinite 1.05s; }
 
 /* ===== RESPONSIVE BREAKPOINTS ===== */
 @media (max-width: 359px) { html { font-size: 13px; } }
@@ -181,4 +247,9 @@ input, textarea, select {
 
 @media print {
   body { background: white !important; color: black !important; }
+}
+
+/* Apply Amiri for Arabic text */
+[dir="rtl"], .arabic-text {
+  font-family: 'Amiri', 'Scheherazade New', 'Traditional Arabic', 'Noto Naskh Arabic', serif;
 }

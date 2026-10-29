@@ -1,4 +1,9 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
+import { TRANSLATIONS, LANGUAGES, DHIKR_TRANSLATIONS, type LanguageCode } from './translations';
+import {
+  TasbeehIcon, BellIcon, ListIcon, ResetIcon, SettingsIcon,
+  MoonIcon, SunIcon, ScrollIcon, GlobeIcon, SparkleIcon, CheckIcon, CloseIcon
+} from './AnimatedIcons';
 
 type SoundType = 'wooden' | 'glass' | 'metal' | 'stone' | 'bell' | 'none';
 type ThemeMode = 'dark' | 'light' | 'sepia';
@@ -12,41 +17,40 @@ interface LapRecord {
 
 interface DhikrOption {
   id: string;
-  arabic: string;
-  transliteration: string;
-  meaning: string;
+  arabic: string; // Uthmani script
   defaultTarget: number;
 }
 
 const TARGET_PRESETS = [33, 99, 100, 300, 500, 1000, 10000];
 
+// Uthmani script Arabic texts
 const DHIKR_LIST: DhikrOption[] = [
-  { id: 'subhanallah', arabic: 'سُبْحَانَ اللَّهِ', transliteration: 'SubhanAllah', meaning: 'Glory be to Allah', defaultTarget: 33 },
-  { id: 'alhamdulillah', arabic: 'الْحَمْدُ لِلَّهِ', transliteration: 'Alhamdulillah', meaning: 'All praise is due to Allah', defaultTarget: 33 },
-  { id: 'allahuakbar', arabic: 'اللَّهُ أَكْبَرُ', transliteration: 'Allahu Akbar', meaning: 'Allah is the Greatest', defaultTarget: 33 },
-  { id: 'lailaha', arabic: 'لَا إِلَٰهَ إِلَّا اللَّهُ', transliteration: 'La ilaha illallah', meaning: 'There is no god but Allah', defaultTarget: 100 },
-  { id: 'astaghfirullah', arabic: 'أَسْتَغْفِرُ اللَّهَ', transliteration: 'Astaghfirullah', meaning: 'I seek forgiveness from Allah', defaultTarget: 100 },
-  { id: 'subhanwa', arabic: 'سُبْحَانَ اللَّهِ وَبِحَمْدِهِ', transliteration: 'SubhanAllahi wa bihamdihi', meaning: 'Glory and praise be to Allah', defaultTarget: 100 },
-  { id: 'salawat', arabic: 'اللَّهُمَّ صَلِّ عَلَى مُحَمَّد', transliteration: 'Allahumma salli ala Muhammad', meaning: 'O Allah, send blessings upon Muhammad', defaultTarget: 100 },
-  { id: 'lahawla', arabic: 'لَا حَوْلَ وَلَا قُوَّةَ إِلَّا بِاللَّهِ', transliteration: 'La hawla wa la quwwata illa billah', meaning: 'There is no power except with Allah', defaultTarget: 100 },
-  { id: 'none', arabic: '', transliteration: 'Nothing', meaning: 'No dhikr displayed', defaultTarget: 33 },
-  { id: 'custom', arabic: '', transliteration: 'Custom', meaning: 'Enter your own text', defaultTarget: 33 },
+  { id: 'subhanallah', arabic: 'سُبْحَانَ اللّٰهِ', defaultTarget: 33 },
+  { id: 'alhamdulillah', arabic: 'اَلْحَمْدُ لِلّٰهِ', defaultTarget: 33 },
+  { id: 'allahuakbar', arabic: 'اَللّٰهُ أَكْبَرُ', defaultTarget: 34 },
+  { id: 'lailaha', arabic: 'لَا إِلٰهَ إِلَّا اللّٰهُ', defaultTarget: 100 },
+  { id: 'astaghfirullah', arabic: 'أَسْتَغْفِرُ اللّٰهَ', defaultTarget: 100 },
+  { id: 'subhanwa', arabic: 'سُبْحَانَ اللّٰهِ وَبِحَمْدِهِ', defaultTarget: 100 },
+  { id: 'salawat', arabic: 'اَللّٰهُمَّ صَلِّ عَلٰى مُحَمَّدٍ', defaultTarget: 100 },
+  { id: 'lahawla', arabic: 'لَا حَوْلَ وَلَا قُوَّةَ إِلَّا بِاللّٰهِ', defaultTarget: 100 },
+  { id: 'none', arabic: '', defaultTarget: 33 },
+  { id: 'custom', arabic: '', defaultTarget: 33 },
 ];
 
-const SOUND_OPTIONS: { value: SoundType; label: string; icon: string }[] = [
-  { value: 'none', label: 'Silent', icon: '🔇' },
-  { value: 'wooden', label: 'Wooden Bead', icon: '🪵' },
-  { value: 'glass', label: 'Glass Bead', icon: '🔮' },
-  { value: 'metal', label: 'Metal Click', icon: '🔔' },
-  { value: 'stone', label: 'Stone Drop', icon: '🪨' },
-  { value: 'bell', label: 'Temple Bell', icon: '🛕' },
+const SOUND_OPTIONS: { value: SoundType; labelKey: string; icon: string }[] = [
+  { value: 'none', labelKey: 'silent', icon: '🔇' },
+  { value: 'wooden', labelKey: 'woodenBead', icon: '🪵' },
+  { value: 'glass', labelKey: 'glassBead', icon: '🔮' },
+  { value: 'metal', labelKey: 'metalClick', icon: '🔔' },
+  { value: 'stone', labelKey: 'stoneDrop', icon: '🪨' },
+  { value: 'bell', labelKey: 'templeBell', icon: '🛕' },
 ];
 
-const FONT_SIZES: { value: FontSize; label: string; preview: string }[] = [
-  { value: 'small', label: 'Small', preview: 'Aa' },
-  { value: 'medium', label: 'Medium', preview: 'Aa' },
-  { value: 'large', label: 'Large', preview: 'Aa' },
-  { value: 'xlarge', label: 'X-Large', preview: 'Aa' },
+const FONT_SIZES: { value: FontSize; labelKey: string }[] = [
+  { value: 'small', labelKey: 'small' },
+  { value: 'medium', labelKey: 'medium' },
+  { value: 'large', labelKey: 'large' },
+  { value: 'xlarge', labelKey: 'xlarge' },
 ];
 
 const THEMES = {
@@ -133,6 +137,7 @@ function App() {
   const [soundType, setSoundType] = useState<SoundType>(() => loadState('sound', 'none' as SoundType));
   const [theme, setTheme] = useState<ThemeMode>(() => loadState('theme', 'dark' as ThemeMode));
   const [fontSize, setFontSize] = useState<FontSize>(() => loadState('fontSize', 'medium' as FontSize));
+  const [lang, setLang] = useState<LanguageCode>(() => loadState('lang', 'en' as LanguageCode));
   const [selectedDhikr, setSelectedDhikr] = useState<string>(() => loadState('dhikr', 'none'));
   const [customDhikr, setCustomDhikr] = useState<string>(() => loadState('customDhikr', ''));
   const [showSoundPanel, setShowSoundPanel] = useState(false);
@@ -140,23 +145,27 @@ function App() {
   const [showSettings, setShowSettings] = useState(false);
   const [showDhikrPicker, setShowDhikrPicker] = useState(false);
   const [showTargetPicker, setShowTargetPicker] = useState(false);
+  const [showLangPicker, setShowLangPicker] = useState(false);
   const [isPressed, setIsPressed] = useState(false);
   const [totalAllTime, setTotalAllTime] = useState(() => loadState('total', 0));
   const [showCelebration, setShowCelebration] = useState(false);
   const [screenSize, setScreenSize] = useState<'xs' | 'sm' | 'md' | 'lg' | 'xl'>('sm');
   const [isLandscape, setIsLandscape] = useState(false);
   const [ripple, setRipple] = useState(false);
+  const [countAnim, setCountAnim] = useState(false);
 
   const audioContextRef = useRef<AudioContext | null>(null);
   const t = THEMES[theme];
+  const tr = TRANSLATIONS[lang];
+  const currentLang = LANGUAGES.find(l => l.code === lang)!;
 
-  // Font size multipliers
   const fontScale = fontSize === 'small' ? 0.8 : fontSize === 'medium' ? 1 : fontSize === 'large' ? 1.25 : 1.55;
 
   // Persist state
   useEffect(() => { saveState('sound', soundType); }, [soundType]);
   useEffect(() => { saveState('theme', theme); document.documentElement.setAttribute('data-theme', theme); }, [theme]);
   useEffect(() => { saveState('fontSize', fontSize); }, [fontSize]);
+  useEffect(() => { saveState('lang', lang); }, [lang]);
   useEffect(() => { saveState('dhikr', selectedDhikr); }, [selectedDhikr]);
   useEffect(() => { saveState('customDhikr', customDhikr); }, [customDhikr]);
   useEffect(() => { saveState('total', totalAllTime); }, [totalAllTime]);
@@ -178,9 +187,8 @@ function App() {
     return () => { window.removeEventListener('resize', update); window.removeEventListener('orientationchange', update); };
   }, []);
 
-  // Listen for Flutter messages
   useEffect(() => {
-    sendToFlutter('appReady', { theme, fontSize });
+    sendToFlutter('appReady', { theme, fontSize, lang });
     const handler = (event: MessageEvent) => {
       if (event.data?.channel === 'flutter-tasbeeh') {
         const { action, payload } = event.data;
@@ -190,7 +198,7 @@ function App() {
     };
     window.addEventListener('message', handler);
     return () => window.removeEventListener('message', handler);
-  }, [theme, fontSize]);
+  }, [theme, fontSize, lang]);
 
   const getAudioContext = useCallback(() => {
     try {
@@ -267,7 +275,9 @@ function App() {
     playSound(soundType);
     triggerHaptic();
     setRipple(true);
+    setCountAnim(true);
     setTimeout(() => setRipple(false), 400);
+    setTimeout(() => setCountAnim(false), 200);
     sendToFlutter('count', { count: newCount, target, totalAllTime: totalAllTime + 1 });
 
     if (newCount >= target) {
@@ -299,10 +309,10 @@ function App() {
 
   const progress = target > 0 ? (count / target) * 100 : 0;
   const currentDhikr = DHIKR_LIST.find(d => d.id === selectedDhikr);
+  const currentDhikrTranslation = DHIKR_TRANSLATIONS[selectedDhikr]?.[lang];
   const isSmall = screenSize === 'xs';
   const isTiny = screenSize === 'xs' && window.innerHeight < 600;
 
-  // Dynamic sizing
   const getRingSize = () => {
     if (isTiny) return 'min(48vw, 38vh, 180px)';
     if (screenSize === 'xs') return 'min(52vw, 40vh, 200px)';
@@ -321,10 +331,21 @@ function App() {
     return 'min(15vw, 18vh, 200px)';
   };
 
-  // Counter font size scales with both screen size AND user preference
   const counterFontSize = () => {
     const base = isTiny ? 2.2 : screenSize === 'xs' ? 2.8 : screenSize === 'sm' ? 3.5 : 4.2;
     return `${base * fontScale}rem`;
+  };
+
+  // Get dhikr display text based on language
+  const getDhikrDisplayText = () => {
+    if (selectedDhikr === 'none') return null;
+    if (selectedDhikr === 'custom') return customDhikr || tr.custom;
+    return currentDhikrTranslation?.transliteration || '';
+  };
+
+  const getDhikrMeaning = () => {
+    if (selectedDhikr === 'none' || selectedDhikr === 'custom') return null;
+    return currentDhikrTranslation?.meaning || '';
   };
 
   return (
@@ -336,11 +357,12 @@ function App() {
         transition: 'background 0.5s ease, color 0.5s ease',
         minHeight: '100dvh',
         height: '100dvh',
+        direction: currentLang.dir,
       }}
     >
-      {/* Animated background pattern */}
+      {/* Background pattern */}
       <div className="fixed inset-0 pointer-events-none" style={{
-        opacity: 0.04,
+        opacity: 0.03,
         backgroundImage: `radial-gradient(circle, ${t.gold} 1px, transparent 1px)`,
         backgroundSize: isSmall ? '26px 26px' : '44px 44px',
       }} />
@@ -349,67 +371,55 @@ function App() {
       {showCelebration && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center pointer-events-none">
           <div className="text-center" style={{ animation: 'celebPop 0.6s ease-out' }}>
-            <div style={{ fontSize: isSmall ? '3rem' : '4.5rem' }}>✨</div>
-            <div className="font-bold mt-2" style={{ color: t.gold, fontSize: isSmall ? '1.3rem' : '2rem', textShadow: t.textGlow }}>
-              Target Complete!
+            <SparkleIcon size={isSmall ? 60 : 90} color={t.gold} />
+            <div className="font-bold mt-3" style={{ color: t.gold, fontSize: isSmall ? '1.3rem' : '2rem', textShadow: t.textGlow }}>
+              {tr.targetComplete}
             </div>
             <div className="mt-1" style={{ color: t.textMuted, fontSize: isSmall ? '0.85rem' : '1.05rem' }}>
-              Lap {currentLap - 1} of {target}x ✓
+              {tr.lap} {currentLap - 1} • {target}x ✓
             </div>
           </div>
         </div>
       )}
 
-      {/* Top Bar - Dhikr Selector */}
+      {/* ===== TOP HEADER - Title Only ===== */}
       <header
-        className="flex items-center justify-between flex-shrink-0"
+        className="flex items-center justify-center flex-shrink-0 relative"
         style={{
-          padding: `${isSmall ? '0.4rem' : '0.6rem'} ${isSmall ? '0.6rem' : '1rem'}`,
-          paddingTop: `max(${isSmall ? '0.4rem' : '0.6rem'}, env(safe-area-inset-top))`,
+          padding: `${isSmall ? '0.5rem' : '0.75rem'} ${isSmall ? '0.6rem' : '1rem'}`,
+          paddingTop: `max(${isSmall ? '0.5rem' : '0.75rem'}, env(safe-area-inset-top))`,
         }}
       >
-        <button
-          onClick={() => setShowDhikrPicker(true)}
-          className="flex-1 text-left rounded-xl transition-all active:scale-[0.98]"
+        <h1
+          className="font-bold text-center"
           style={{
-            padding: isSmall ? '0.35rem 0.6rem' : '0.5rem 0.8rem',
-            backgroundColor: t.goldDim,
-            border: `1px solid ${t.goldBorder}`,
+            color: t.gold,
+            fontSize: isSmall ? '0.95rem' : '1.2rem',
+            textShadow: t.textGlow,
+            letterSpacing: '0.02em',
           }}
         >
-          <div style={{ color: t.textDim, fontSize: isSmall ? '0.55rem' : '0.65rem', letterSpacing: '0.05em' }}>
-            DHIKR
-          </div>
-          <div className="font-semibold truncate" style={{ color: t.gold, fontSize: isSmall ? '0.75rem' : '0.9rem' }}>
-            {currentDhikr?.transliteration || 'Select...'}
-          </div>
+          {tr.appTitle}
+        </h1>
+        {/* Language button - top right */}
+        <button
+          onClick={() => setShowLangPicker(true)}
+          className="absolute rounded-full flex items-center justify-center transition-all active:scale-90"
+          style={{
+            right: isSmall ? '0.5rem' : '1rem',
+            width: isSmall ? '32px' : '38px',
+            height: isSmall ? '32px' : '38px',
+            backgroundColor: t.goldDim,
+            border: `1.5px solid ${t.goldBorder}`,
+          }}
+          aria-label="Language"
+        >
+          <GlobeIcon size={isSmall ? 16 : 20} color={t.gold} />
         </button>
-
-        {/* Theme Quick Switch */}
-        <div className="flex gap-1 ml-2 flex-shrink-0">
-          {(['dark', 'light', 'sepia'] as ThemeMode[]).map((mode) => (
-            <button
-              key={mode}
-              onClick={() => setTheme(mode)}
-              className="rounded-full flex items-center justify-center transition-all active:scale-90"
-              style={{
-                width: isSmall ? '30px' : '36px',
-                height: isSmall ? '30px' : '36px',
-                backgroundColor: theme === mode ? t.gold : t.goldDim,
-                border: `1.5px solid ${theme === mode ? t.gold : t.goldBorder}`,
-              }}
-              aria-label={`${mode} theme`}
-            >
-              <span style={{ fontSize: isSmall ? '0.85rem' : '1rem' }}>
-                {mode === 'dark' ? '🌙' : mode === 'light' ? '☀️' : '📜'}
-              </span>
-            </button>
-          ))}
-        </div>
       </header>
 
-      {/* Target Presets - Scrollable */}
-      <div className="flex-shrink-0 px-2" style={{ paddingBottom: '0.3rem' }}>
+      {/* ===== TARGET PRESETS ===== */}
+      <div className="flex-shrink-0 px-2" style={{ paddingBottom: '0.25rem' }}>
         <div className="flex gap-1.5 overflow-x-auto pb-1 justify-center flex-wrap" style={{ scrollbarWidth: 'none' }}>
           {TARGET_PRESETS.map((preset) => (
             <button
@@ -417,8 +427,8 @@ function App() {
               onClick={() => { setTarget(preset); setCount(0); setCurrentLap(1); setLaps([]); sendToFlutter('targetChanged', { target: preset }); }}
               className="rounded-full font-semibold transition-all duration-200 active:scale-95 flex-shrink-0"
               style={{
-                padding: isSmall ? '0.2rem 0.55rem' : '0.3rem 0.8rem',
-                fontSize: isSmall ? '0.6rem' : '0.75rem',
+                padding: isSmall ? '0.18rem 0.5rem' : '0.25rem 0.75rem',
+                fontSize: isSmall ? '0.58rem' : '0.72rem',
                 backgroundColor: target === preset ? t.gold : 'transparent',
                 color: target === preset ? t.bg1 : t.gold,
                 border: `1.5px solid ${t.gold}`,
@@ -433,40 +443,54 @@ function App() {
             onClick={() => setShowTargetPicker(true)}
             className="rounded-full font-semibold transition-all active:scale-95 flex-shrink-0"
             style={{
-              padding: isSmall ? '0.2rem 0.55rem' : '0.3rem 0.8rem',
-              fontSize: isSmall ? '0.6rem' : '0.75rem',
+              padding: isSmall ? '0.18rem 0.5rem' : '0.25rem 0.75rem',
+              fontSize: isSmall ? '0.58rem' : '0.72rem',
               backgroundColor: 'transparent',
               color: t.gold,
               border: `1.5px dashed ${t.goldBorder}`,
             }}
           >
-            Custom
+            {tr.custom}
           </button>
         </div>
       </div>
 
-      {/* Main Content */}
+      {/* ===== MAIN CONTENT ===== */}
       <main
-        className={`flex-1 flex ${isLandscape && screenSize !== 'xl' ? 'flex-row' : 'flex-col'} items-center justify-center gap-1 sm:gap-3 px-2`}
+        className={`flex-1 flex ${isLandscape && screenSize !== 'xl' ? 'flex-row' : 'flex-col'} items-center justify-center gap-1 sm:gap-2 px-2`}
         style={{ minHeight: 0 }}
       >
         {/* Dhikr Display */}
         {selectedDhikr !== 'none' && (
-          <div className="text-center flex-shrink-0" style={{ padding: '0.3rem 0' }}>
-            {currentDhikr?.arabic && (
+          <div className="text-center flex-shrink-0" style={{ padding: '0.2rem 0' }}>
+            {/* Arabic Uthmani text */}
+            {currentDhikr?.arabic && selectedDhikr !== 'custom' && (
               <div className="font-bold" style={{
                 color: t.gold,
                 fontSize: `${(isSmall ? 1.1 : 1.5) * fontScale}rem`,
                 textShadow: t.textGlow,
-                lineHeight: 1.3,
+                lineHeight: 1.4,
                 direction: 'rtl',
+                fontFamily: '"Scheherazade New", "Traditional Arabic", "Noto Naskh Arabic", serif',
               }}>
-                {selectedDhikr === 'custom' ? customDhikr || 'Custom Dhikr' : currentDhikr.arabic}
+                {currentDhikr.arabic}
               </div>
             )}
-            {currentDhikr?.meaning && selectedDhikr !== 'custom' && (
-              <div style={{ color: t.textDim, fontSize: `${(isSmall ? 0.6 : 0.75) * fontScale}rem`, marginTop: '0.15rem' }}>
-                {currentDhikr.meaning}
+            {/* Transliteration in user's language */}
+            {getDhikrDisplayText() && (
+              <div className="font-semibold" style={{
+                color: t.text,
+                fontSize: `${(isSmall ? 0.7 : 0.9) * fontScale}rem`,
+                marginTop: '0.15rem',
+                opacity: 0.9,
+              }}>
+                {getDhikrDisplayText()}
+              </div>
+            )}
+            {/* Meaning */}
+            {getDhikrMeaning() && (
+              <div style={{ color: t.textDim, fontSize: `${(isSmall ? 0.55 : 0.7) * fontScale}rem`, marginTop: '0.1rem' }}>
+                {getDhikrMeaning()}
               </div>
             )}
           </div>
@@ -489,13 +513,18 @@ function App() {
             />
           </svg>
           <div className="text-center z-10">
-            <div className="font-bold tabular-nums" style={{
-              color: t.gold,
-              fontSize: counterFontSize(),
-              textShadow: t.textGlow,
-              lineHeight: 1,
-              letterSpacing: '-0.02em',
-            }}>
+            <div
+              className="font-bold tabular-nums"
+              style={{
+                color: t.gold,
+                fontSize: counterFontSize(),
+                textShadow: t.textGlow,
+                lineHeight: 1,
+                letterSpacing: '-0.02em',
+                transform: countAnim ? 'scale(1.08)' : 'scale(1)',
+                transition: 'transform 0.15s ease-out',
+              }}
+            >
               {count}
             </div>
             <div style={{ color: t.textMuted, fontSize: `${(isSmall ? 0.75 : 0.95) * fontScale}rem`, marginTop: '0.2rem' }}>
@@ -528,7 +557,6 @@ function App() {
             transition: 'transform 0.1s ease, box-shadow 0.1s ease',
           }}
         >
-          {/* Ripple effect */}
           {ripple && (
             <div className="absolute inset-0 rounded-full" style={{
               background: `radial-gradient(circle, ${t.gold}40 0%, transparent 70%)`,
@@ -536,31 +564,31 @@ function App() {
             }} />
           )}
           <div className="text-center z-10">
-            <div style={{ fontSize: isSmall ? '1.8rem' : screenSize === 'sm' ? '2.2rem' : '2.8rem' }}>📿</div>
-            <div className="font-bold" style={{ color: t.gold, fontSize: `${(isSmall ? 0.65 : 0.85) * fontScale}rem` }}>
-              TAP
+            <TasbeehIcon size={isSmall ? 36 : screenSize === 'sm' ? 44 : 56} color={t.gold} animate />
+            <div className="font-bold mt-1" style={{ color: t.gold, fontSize: `${(isSmall ? 0.6 : 0.8) * fontScale}rem` }}>
+              {tr.tap}
             </div>
           </div>
         </button>
       </main>
 
-      {/* Stats Bar */}
+      {/* ===== STATS BAR ===== */}
       <div
         className="flex justify-between items-center rounded-2xl mx-auto flex-shrink-0"
         style={{
           width: 'min(94%, 420px)',
-          padding: isSmall ? '0.35rem 0.4rem' : '0.5rem 0.8rem',
+          padding: isSmall ? '0.3rem 0.4rem' : '0.45rem 0.8rem',
           backgroundColor: t.cardBg,
           border: `1px solid ${t.cardBorder}`,
           backdropFilter: 'blur(12px)',
           WebkitBackdropFilter: 'blur(12px)',
-          margin: '0.3rem auto',
+          margin: '0.25rem auto',
         }}
       >
         {[
-          { value: currentLap, label: 'Lap' },
-          { value: laps.length, label: 'Done' },
-          { value: totalAllTime, label: 'Total' },
+          { value: currentLap, label: tr.lap },
+          { value: laps.length, label: tr.completed },
+          { value: totalAllTime, label: tr.total },
         ].map((stat, i) => (
           <div key={i} className="text-center flex-1" style={i < 2 ? { borderRight: `1px solid ${t.cardBorder}` } : {}}>
             <div className="font-bold" style={{ color: t.gold, fontSize: `${(isSmall ? 0.85 : 1.1) * fontScale}rem` }}>
@@ -573,53 +601,128 @@ function App() {
         ))}
       </div>
 
-      {/* Bottom Controls with Labels */}
+      {/* ===== BOTTOM CONTROLS ===== */}
       <div
-        className="flex justify-center gap-4 sm:gap-6 flex-shrink-0"
+        className="flex justify-around items-start flex-shrink-0"
         style={{
-          padding: '0.5rem 0.75rem',
-          paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom))',
+          padding: '0.4rem 0.5rem',
+          paddingBottom: 'max(0.4rem, env(safe-area-inset-bottom))',
+          maxWidth: '420px',
+          margin: '0 auto',
+          width: '100%',
         }}
       >
-        {[
-          { icon: '🔔', label: 'Sound', action: () => setShowSoundPanel(true) },
-          { icon: '📋', label: 'Lap', action: () => setShowLaps(true) },
-          { icon: '🔄', label: 'Reset', action: handleReset },
-          { icon: '⚙️', label: 'Settings', action: () => setShowSettings(true) },
-        ].map((btn, i) => (
-          <button
-            key={i}
-            onClick={btn.action}
-            className="flex flex-col items-center gap-0.5 transition-all active:scale-90"
+        {/* Dhikr Selector */}
+        <button
+          onClick={() => setShowDhikrPicker(true)}
+          className="flex flex-col items-center gap-0.5 transition-all active:scale-90"
+        >
+          <div
+            className="rounded-full flex items-center justify-center"
+            style={{
+              width: isSmall ? '40px' : '48px',
+              height: isSmall ? '40px' : '48px',
+              backgroundColor: t.goldDim,
+              border: `1.5px solid ${t.goldBorder}`,
+            }}
           >
-            <div
-              className="rounded-full flex items-center justify-center"
-              style={{
-                width: isSmall ? '40px' : '48px',
-                height: isSmall ? '40px' : '48px',
-                backgroundColor: t.goldDim,
-                border: `1.5px solid ${t.goldBorder}`,
-              }}
-            >
-              <span style={{ fontSize: isSmall ? '1rem' : '1.25rem' }}>{btn.icon}</span>
-            </div>
-            <span style={{
-              color: t.textMuted,
-              fontSize: isSmall ? '0.55rem' : '0.65rem',
-              fontWeight: 500,
-            }}>
-              {btn.label}
-            </span>
-          </button>
-        ))}
+            <TasbeehIcon size={isSmall ? 18 : 22} color={t.gold} />
+          </div>
+          <span style={{ color: t.textMuted, fontSize: isSmall ? '0.5rem' : '0.6rem', fontWeight: 500 }}>
+            {tr.dhikr}
+          </span>
+        </button>
+
+        {/* Sound */}
+        <button
+          onClick={() => setShowSoundPanel(true)}
+          className="flex flex-col items-center gap-0.5 transition-all active:scale-90"
+        >
+          <div
+            className="rounded-full flex items-center justify-center"
+            style={{
+              width: isSmall ? '40px' : '48px',
+              height: isSmall ? '40px' : '48px',
+              backgroundColor: t.goldDim,
+              border: `1.5px solid ${t.goldBorder}`,
+            }}
+          >
+            <BellIcon size={isSmall ? 18 : 22} color={t.gold} animate={soundType !== 'none'} />
+          </div>
+          <span style={{ color: t.textMuted, fontSize: isSmall ? '0.5rem' : '0.6rem', fontWeight: 500 }}>
+            {tr.sound}
+          </span>
+        </button>
+
+        {/* Laps */}
+        <button
+          onClick={() => setShowLaps(true)}
+          className="flex flex-col items-center gap-0.5 transition-all active:scale-90"
+        >
+          <div
+            className="rounded-full flex items-center justify-center"
+            style={{
+              width: isSmall ? '40px' : '48px',
+              height: isSmall ? '40px' : '48px',
+              backgroundColor: t.goldDim,
+              border: `1.5px solid ${t.goldBorder}`,
+            }}
+          >
+            <ListIcon size={isSmall ? 18 : 22} color={t.gold} />
+          </div>
+          <span style={{ color: t.textMuted, fontSize: isSmall ? '0.5rem' : '0.6rem', fontWeight: 500 }}>
+            {tr.lap}
+          </span>
+        </button>
+
+        {/* Reset */}
+        <button
+          onClick={handleReset}
+          className="flex flex-col items-center gap-0.5 transition-all active:scale-90"
+        >
+          <div
+            className="rounded-full flex items-center justify-center"
+            style={{
+              width: isSmall ? '40px' : '48px',
+              height: isSmall ? '40px' : '48px',
+              backgroundColor: t.goldDim,
+              border: `1.5px solid ${t.goldBorder}`,
+            }}
+          >
+            <ResetIcon size={isSmall ? 18 : 22} color={t.gold} />
+          </div>
+          <span style={{ color: t.textMuted, fontSize: isSmall ? '0.5rem' : '0.6rem', fontWeight: 500 }}>
+            {tr.reset}
+          </span>
+        </button>
+
+        {/* Settings */}
+        <button
+          onClick={() => setShowSettings(true)}
+          className="flex flex-col items-center gap-0.5 transition-all active:scale-90"
+        >
+          <div
+            className="rounded-full flex items-center justify-center"
+            style={{
+              width: isSmall ? '40px' : '48px',
+              height: isSmall ? '40px' : '48px',
+              backgroundColor: t.goldDim,
+              border: `1.5px solid ${t.goldBorder}`,
+            }}
+          >
+            <SettingsIcon size={isSmall ? 18 : 22} color={t.gold} />
+          </div>
+          <span style={{ color: t.textMuted, fontSize: isSmall ? '0.5rem' : '0.6rem', fontWeight: 500 }}>
+            {tr.settings}
+          </span>
+        </button>
       </div>
+
+      {/* ===== MODALS ===== */}
 
       {/* Sound Panel */}
       {showSoundPanel && (
-        <Modal onClose={() => setShowSoundPanel(false)} t={t} isSmall={isSmall}>
-          <h2 className="font-bold text-center mb-3" style={{ color: t.gold, fontSize: isSmall ? '1rem' : '1.2rem' }}>
-            🔔 Sound
-          </h2>
+        <Modal onClose={() => setShowSoundPanel(false)} t={t} isSmall={isSmall} title={`🔔 ${tr.sound}`} closeText={tr.close}>
           <div className="space-y-1.5">
             {SOUND_OPTIONS.map((option) => (
               <button
@@ -637,12 +740,12 @@ function App() {
                   color: soundType === option.value ? t.gold : t.textMuted,
                   fontSize: isSmall ? '0.75rem' : '0.85rem',
                 }}>
-                  {option.label}
+                  {tr[option.labelKey as keyof typeof tr]}
                 </span>
                 {soundType === option.value && (
                   <span className="px-1.5 py-0.5 rounded-full font-semibold" style={{
                     backgroundColor: t.gold, color: t.bg1, fontSize: '0.6rem',
-                  }}>Active</span>
+                  }}>{tr.active}</span>
                 )}
               </button>
             ))}
@@ -652,28 +755,29 @@ function App() {
 
       {/* Settings Panel */}
       {showSettings && (
-        <Modal onClose={() => setShowSettings(false)} t={t} isSmall={isSmall}>
-          <h2 className="font-bold text-center mb-3" style={{ color: t.gold, fontSize: isSmall ? '1rem' : '1.2rem' }}>
-            ⚙️ Settings
-          </h2>
-
+        <Modal onClose={() => setShowSettings(false)} t={t} isSmall={isSmall} title={`⚙️ ${tr.settings}`} closeText={tr.close}>
           {/* Theme */}
           <div className="mb-3">
-            <div className="font-semibold mb-1.5" style={{ color: t.textMuted, fontSize: isSmall ? '0.7rem' : '0.8rem' }}>THEME</div>
+            <div className="font-semibold mb-1.5" style={{ color: t.textMuted, fontSize: isSmall ? '0.65rem' : '0.75rem' }}>{tr.theme}</div>
             <div className="flex gap-2">
-              {(['dark', 'light', 'sepia'] as ThemeMode[]).map((mode) => (
+              {([
+                { mode: 'dark' as ThemeMode, icon: <MoonIcon size={16} color={theme === 'dark' ? t.bg1 : t.gold} />, key: 'dark' },
+                { mode: 'light' as ThemeMode, icon: <SunIcon size={16} color={theme === 'light' ? t.bg1 : t.gold} />, key: 'light' },
+                { mode: 'sepia' as ThemeMode, icon: <ScrollIcon size={16} color={theme === 'sepia' ? t.bg1 : t.gold} />, key: 'sepia' },
+              ]).map(({ mode, icon, key }) => (
                 <button
-                  key={mode}
+                  key={key}
                   onClick={() => setTheme(mode)}
-                  className="flex-1 py-2 rounded-xl font-semibold transition-all active:scale-95"
+                  className="flex-1 py-2 rounded-xl font-semibold transition-all active:scale-95 flex items-center justify-center gap-1.5"
                   style={{
                     backgroundColor: theme === mode ? t.gold : t.cardBg,
                     color: theme === mode ? t.bg1 : t.textMuted,
                     border: `1.5px solid ${theme === mode ? t.gold : t.cardBorder}`,
-                    fontSize: isSmall ? '0.7rem' : '0.8rem',
+                    fontSize: isSmall ? '0.65rem' : '0.75rem',
                   }}
                 >
-                  {mode === 'dark' ? '🌙 Dark' : mode === 'light' ? '☀️ Light' : '📜 Sepia'}
+                  {icon}
+                  {tr[key as keyof typeof tr]}
                 </button>
               ))}
             </div>
@@ -681,7 +785,7 @@ function App() {
 
           {/* Font Size */}
           <div className="mb-3">
-            <div className="font-semibold mb-1.5" style={{ color: t.textMuted, fontSize: isSmall ? '0.7rem' : '0.8rem' }}>FONT SIZE</div>
+            <div className="font-semibold mb-1.5" style={{ color: t.textMuted, fontSize: isSmall ? '0.65rem' : '0.75rem' }}>{tr.fontSize}</div>
             <div className="flex gap-1.5">
               {FONT_SIZES.map((size) => (
                 <button
@@ -692,96 +796,140 @@ function App() {
                     backgroundColor: fontSize === size.value ? t.gold : t.cardBg,
                     color: fontSize === size.value ? t.bg1 : t.textMuted,
                     border: `1.5px solid ${fontSize === size.value ? t.gold : t.cardBorder}`,
-                    fontSize: size.value === 'small' ? '0.7rem' : size.value === 'medium' ? '0.8rem' : size.value === 'large' ? '0.95rem' : '1.1rem',
+                    fontSize: size.value === 'small' ? '0.65rem' : size.value === 'medium' ? '0.75rem' : size.value === 'large' ? '0.85rem' : '0.95rem',
                   }}
                 >
-                  {size.label}
+                  {tr[size.labelKey as keyof typeof tr]}
                 </button>
               ))}
             </div>
           </div>
 
-          {/* Dhikr Selection */}
+          {/* Language */}
           <div>
-            <div className="font-semibold mb-1.5" style={{ color: t.textMuted, fontSize: isSmall ? '0.7rem' : '0.8rem' }}>DHIKR</div>
+            <div className="font-semibold mb-1.5" style={{ color: t.textMuted, fontSize: isSmall ? '0.65rem' : '0.75rem' }}>{tr.language}</div>
             <button
-              onClick={() => { setShowSettings(false); setShowDhikrPicker(true); }}
-              className="w-full py-2.5 rounded-xl font-semibold transition-all active:scale-[0.98]"
+              onClick={() => { setShowSettings(false); setShowLangPicker(true); }}
+              className="w-full py-2.5 rounded-xl font-semibold transition-all active:scale-[0.98] flex items-center justify-center gap-2"
               style={{
                 backgroundColor: t.accentSoft,
                 color: t.gold,
                 border: `1.5px solid ${t.goldBorder}`,
-                fontSize: isSmall ? '0.75rem' : '0.85rem',
+                fontSize: isSmall ? '0.7rem' : '0.8rem',
               }}
             >
-              Change Dhikr → {currentDhikr?.transliteration}
+              <GlobeIcon size={16} color={t.gold} />
+              {currentLang.nativeName}
             </button>
           </div>
         </Modal>
       )}
 
-      {/* Dhikr Picker */}
-      {showDhikrPicker && (
-        <Modal onClose={() => setShowDhikrPicker(false)} t={t} isSmall={isSmall}>
-          <h2 className="font-bold text-center mb-3" style={{ color: t.gold, fontSize: isSmall ? '1rem' : '1.2rem' }}>
-            📿 Select Dhikr
-          </h2>
+      {/* Language Picker */}
+      {showLangPicker && (
+        <Modal onClose={() => setShowLangPicker(false)} t={t} isSmall={isSmall} title={`🌐 ${tr.language}`} closeText={tr.close}>
           <div className="space-y-1.5">
-            {DHIKR_LIST.map((dhikr) => (
+            {LANGUAGES.map((language) => (
               <button
-                key={dhikr.id}
-                onClick={() => handleDhikrSelect(dhikr.id)}
-                className="w-full text-left rounded-xl transition-all active:scale-[0.98]"
+                key={language.code}
+                onClick={() => { setLang(language.code); setShowLangPicker(false); }}
+                className="w-full flex items-center gap-3 rounded-xl transition-all active:scale-[0.98]"
                 style={{
-                  padding: isSmall ? '0.5rem 0.7rem' : '0.65rem 0.9rem',
-                  backgroundColor: selectedDhikr === dhikr.id ? t.accentSoft : t.cardBg,
-                  border: selectedDhikr === dhikr.id ? `2px solid ${t.gold}` : `1px solid ${t.cardBorder}`,
+                  padding: isSmall ? '0.5rem 0.7rem' : '0.6rem 0.9rem',
+                  backgroundColor: lang === language.code ? t.accentSoft : t.cardBg,
+                  border: lang === language.code ? `2px solid ${t.gold}` : `1px solid ${t.cardBorder}`,
+                  direction: language.dir,
                 }}
               >
-                <div className="flex items-center justify-between">
-                  <div className="flex-1 min-w-0">
-                    <div className="font-semibold truncate" style={{ color: selectedDhikr === dhikr.id ? t.gold : t.text, fontSize: isSmall ? '0.75rem' : '0.85rem' }}>
-                      {dhikr.transliteration}
-                    </div>
-                    <div className="truncate" style={{ color: t.textDim, fontSize: isSmall ? '0.6rem' : '0.7rem' }}>
-                      {dhikr.meaning}
-                    </div>
+                <div className="flex-1 text-left">
+                  <div className="font-semibold" style={{
+                    color: lang === language.code ? t.gold : t.text,
+                    fontSize: isSmall ? '0.75rem' : '0.85rem',
+                  }}>
+                    {language.nativeName}
                   </div>
-                  {dhikr.arabic && (
-                    <div className="ml-2 flex-shrink-0" style={{ color: t.gold, fontSize: isSmall ? '0.9rem' : '1.1rem', direction: 'rtl' }}>
-                      {dhikr.arabic.slice(0, 15)}...
-                    </div>
-                  )}
+                  <div style={{ color: t.textDim, fontSize: isSmall ? '0.6rem' : '0.7rem' }}>
+                    {language.name}
+                  </div>
                 </div>
-                {dhikr.id === 'custom' && selectedDhikr === 'custom' && (
-                  <input
-                    type="text"
-                    value={customDhikr}
-                    onChange={(e) => setCustomDhikr(e.target.value)}
-                    onClick={(e) => e.stopPropagation()}
-                    placeholder="Enter your dhikr..."
-                    className="w-full mt-2 px-2 py-1.5 rounded-lg text-left"
-                    style={{
-                      backgroundColor: t.bg1,
-                      color: t.text,
-                      border: `1px solid ${t.goldBorder}`,
-                      fontSize: isSmall ? '0.75rem' : '0.85rem',
-                      outline: 'none',
-                    }}
-                  />
-                )}
+                {lang === language.code && <CheckIcon size={18} color={t.success} />}
               </button>
             ))}
           </div>
         </Modal>
       )}
 
+      {/* Dhikr Picker */}
+      {showDhikrPicker && (
+        <Modal onClose={() => setShowDhikrPicker(false)} t={t} isSmall={isSmall} title={`📿 ${tr.selectDhikr}`} closeText={tr.close}>
+          <div className="space-y-1.5">
+            {DHIKR_LIST.map((dhikr) => {
+              const translation = DHIKR_TRANSLATIONS[dhikr.id]?.[lang];
+              return (
+                <button
+                  key={dhikr.id}
+                  onClick={() => handleDhikrSelect(dhikr.id)}
+                  className="w-full text-left rounded-xl transition-all active:scale-[0.98]"
+                  style={{
+                    padding: isSmall ? '0.5rem 0.7rem' : '0.65rem 0.9rem',
+                    backgroundColor: selectedDhikr === dhikr.id ? t.accentSoft : t.cardBg,
+                    border: selectedDhikr === dhikr.id ? `2px solid ${t.gold}` : `1px solid ${t.cardBorder}`,
+                  }}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      {dhikr.id !== 'none' && dhikr.id !== 'custom' && dhikr.arabic && (
+                        <div style={{
+                          color: t.gold,
+                          fontSize: isSmall ? '0.85rem' : '1rem',
+                          direction: 'rtl',
+                          fontFamily: '"Scheherazade New", "Traditional Arabic", serif',
+                          lineHeight: 1.4,
+                        }} className="truncate">
+                          {dhikr.arabic}
+                        </div>
+                      )}
+                      <div className="font-semibold truncate" style={{
+                        color: selectedDhikr === dhikr.id ? t.gold : t.text,
+                        fontSize: isSmall ? '0.7rem' : '0.8rem',
+                        marginTop: dhikr.arabic ? '0.1rem' : '0',
+                      }}>
+                        {translation?.transliteration || (dhikr.id === 'none' ? tr.silent : tr.custom)}
+                      </div>
+                      {translation?.meaning && (
+                        <div className="truncate" style={{ color: t.textDim, fontSize: isSmall ? '0.55rem' : '0.65rem' }}>
+                          {translation.meaning}
+                        </div>
+                      )}
+                    </div>
+                    {selectedDhikr === dhikr.id && <CheckIcon size={18} color={t.success} />}
+                  </div>
+                  {dhikr.id === 'custom' && selectedDhikr === 'custom' && (
+                    <input
+                      type="text"
+                      value={customDhikr}
+                      onChange={(e) => setCustomDhikr(e.target.value)}
+                      onClick={(e) => e.stopPropagation()}
+                      placeholder={tr.custom}
+                      className="w-full mt-2 px-2 py-1.5 rounded-lg text-left"
+                      style={{
+                        backgroundColor: t.bg1,
+                        color: t.text,
+                        border: `1px solid ${t.goldBorder}`,
+                        fontSize: isSmall ? '0.75rem' : '0.85rem',
+                      }}
+                    />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </Modal>
+      )}
+
       {/* Target Custom Picker */}
       {showTargetPicker && (
-        <Modal onClose={() => setShowTargetPicker(false)} t={t} isSmall={isSmall}>
-          <h2 className="font-bold text-center mb-3" style={{ color: t.gold, fontSize: isSmall ? '1rem' : '1.2rem' }}>
-            🎯 Custom Target
-          </h2>
+        <Modal onClose={() => setShowTargetPicker(false)} t={t} isSmall={isSmall} title={`🎯 ${tr.customTarget}`} closeText={tr.setTarget}>
           <input
             type="number"
             min="1"
@@ -794,7 +942,6 @@ function App() {
               color: t.gold,
               border: `2px solid ${t.goldBorder}`,
               fontSize: '1.5rem',
-              outline: 'none',
             }}
           />
           <button
@@ -807,23 +954,20 @@ function App() {
             className="w-full mt-3 py-2.5 rounded-xl font-semibold transition-all active:scale-[0.98]"
             style={{ backgroundColor: t.gold, color: t.bg1, fontSize: isSmall ? '0.85rem' : '0.95rem' }}
           >
-            Set Target
+            {tr.setTarget}
           </button>
         </Modal>
       )}
 
       {/* Laps Modal */}
       {showLaps && (
-        <Modal onClose={() => setShowLaps(false)} t={t} isSmall={isSmall}>
-          <h2 className="font-bold text-center mb-3" style={{ color: t.gold, fontSize: isSmall ? '1rem' : '1.2rem' }}>
-            📋 Lap History
-          </h2>
+        <Modal onClose={() => setShowLaps(false)} t={t} isSmall={isSmall} title={`📋 ${tr.lap}`} closeText={tr.close}>
           {laps.length === 0 ? (
             <div className="text-center py-5">
-              <div style={{ fontSize: '2.5rem' }} className="mb-2">📿</div>
-              <p style={{ color: t.textMuted, fontSize: isSmall ? '0.75rem' : '0.875rem' }}>No completed laps yet</p>
+              <TasbeehIcon size={48} color={t.gold} className="mx-auto mb-2" />
+              <p style={{ color: t.textMuted, fontSize: isSmall ? '0.75rem' : '0.875rem' }}>{tr.noLaps}</p>
               <p style={{ color: t.textDim, fontSize: isSmall ? '0.65rem' : '0.75rem' }} className="mt-1">
-                Complete {target} counts to record a lap
+                {tr.noLapsDesc.replace('{target}', String(target))}
               </p>
             </div>
           ) : (
@@ -845,14 +989,14 @@ function App() {
                     </div>
                     <div>
                       <div className="font-medium" style={{ color: t.gold, fontSize: isSmall ? '0.7rem' : '0.85rem' }}>
-                        {lap.target}x completed
+                        {lap.target}x {tr.completed}
                       </div>
                       <div style={{ color: t.textDim, fontSize: isSmall ? '0.55rem' : '0.7rem' }}>
                         {lap.timestamp.toLocaleTimeString()}
                       </div>
                     </div>
                   </div>
-                  <span style={{ color: t.success, fontSize: '1rem' }}>✓</span>
+                  <CheckIcon size={18} color={t.success} />
                 </div>
               ))}
             </div>
@@ -864,35 +1008,50 @@ function App() {
 }
 
 // Reusable Modal Component
-function Modal({ children, onClose, t, isSmall }: {
+function Modal({ children, onClose, t, isSmall, title, closeText = 'Close' }: {
   children: React.ReactNode;
   onClose: () => void;
   t: typeof THEMES.dark;
   isSmall: boolean;
+  title: string;
+  closeText?: string;
 }) {
   return (
-    <div className="fixed inset-0 z-[90] flex items-center justify-center" style={{ padding: isSmall ? '0.6rem' : '1rem' }} onClick={onClose}>
+    <div className="fixed inset-0 z-[90] flex items-end sm:items-center justify-center" style={{ padding: isSmall ? '0' : '1rem' }} onClick={onClose}>
       <div className="absolute inset-0 backdrop-blur-md" style={{ backgroundColor: t.overlay, animation: 'fadeIn 0.2s ease-out' }} />
       <div
-        className="relative z-10 w-full rounded-3xl overflow-y-auto"
+        className="relative z-10 w-full rounded-t-3xl sm:rounded-3xl overflow-y-auto"
         style={{
-          maxWidth: 'min(94vw, 420px)',
-          maxHeight: '82dvh',
+          maxWidth: 'min(96vw, 420px)',
+          maxHeight: isSmall ? '85dvh' : '82dvh',
           background: t.modalBg,
           border: `2px solid ${t.goldBorder}`,
-          boxShadow: `0 25px 70px ${t.shadow}, 0 0 50px ${t.goldDim}`,
-          padding: isSmall ? '0.9rem' : '1.3rem',
+          boxShadow: `0 -10px 50px ${t.shadow}, 0 0 50px ${t.goldDim}`,
+          padding: isSmall ? '1rem' : '1.3rem',
           animation: 'slideUp 0.25s ease-out',
         }}
         onClick={(e) => e.stopPropagation()}
       >
+        {/* Modal Header */}
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="font-bold" style={{ color: t.gold, fontSize: isSmall ? '1rem' : '1.15rem' }}>
+            {title}
+          </h2>
+          <button
+            onClick={onClose}
+            className="rounded-full p-1 transition-all active:scale-90"
+            style={{ backgroundColor: t.goldDim }}
+          >
+            <CloseIcon size={16} color={t.gold} />
+          </button>
+        </div>
         {children}
         <button
           onClick={onClose}
           className="w-full mt-3 py-2.5 rounded-xl font-semibold transition-all active:scale-[0.98]"
           style={{ backgroundColor: t.gold, color: t.bg1, fontSize: isSmall ? '0.8rem' : '0.9rem' }}
         >
-          Close
+          {closeText}
         </button>
       </div>
     </div>

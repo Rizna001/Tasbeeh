@@ -2,22 +2,15 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <!-- Flutter WebView compatible viewport -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover, shrink-to-fit=no" />
-    <!-- PWA / Flutter WebView support -->
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="format-detection" content="telephone=no" />
-    <!-- Theme colors for both modes -->
-    <meta name="theme-color" content="#00160D" media="(prefers-color-scheme: dark)" />
-    <meta name="theme-color" content="#f0f7f4" media="(prefers-color-scheme: light)" />
-    <!-- Flutter WebView specific -->
-    <meta name="x-content-type-options" content="nosniff" />
-    <meta name="description" content="Digital Tasbeeh Counter - Islamic prayer bead counter with sound effects, haptic feedback, dark/light themes. Flutter WebView compatible." />
+    <meta name="theme-color" content="#00160D" />
+    <meta name="description" content="Digital Tasbeeh Counter - Islamic prayer bead counter with dhikr selection, multiple themes, sound effects, and haptic feedback. Flutter WebView compatible." />
     <title>Digital Tasbeeh Counter</title>
     <style>
-      /* Critical CSS - prevents flash of unstyled content in Flutter WebView */
       html, body {
         margin: 0;
         padding: 0;
@@ -32,17 +25,18 @@
         user-select: none;
         touch-action: manipulation;
       }
-      /* Dark theme default */
       html[data-theme="dark"], html:not([data-theme]) {
         background-color: #00160D;
         color: #ffffff;
       }
-      /* Light theme */
       html[data-theme="light"] {
-        background-color: #f0f7f4;
-        color: #1a1a1a;
+        background-color: #f4faf7;
+        color: #1a2e1a;
       }
-      /* Safe area support for notched devices */
+      html[data-theme="sepia"] {
+        background-color: #2b1d0e;
+        color: #f5e6d3;
+      }
       @supports (padding: env(safe-area-inset-top)) {
         body {
           padding-top: env(safe-area-inset-top);
@@ -51,45 +45,29 @@
           padding-right: env(safe-area-inset-right);
         }
       }
-      /* Prevent pull-to-refresh in Flutter WebView */
       body {
         overscroll-behavior: none;
         -webkit-overflow-scrolling: touch;
       }
     </style>
     <script>
-      // Initialize theme immediately to prevent flash in Flutter WebView
       (function () {
         var saved = localStorage.getItem('tasbeeh-theme');
-        var theme = saved === 'light' ? 'light' : 'dark';
+        var theme = (saved === 'light' || saved === 'sepia') ? saved : 'dark';
         document.documentElement.setAttribute('data-theme', theme);
-        document.documentElement.classList.remove('light', 'dark');
-        document.documentElement.classList.add(theme);
         
-        // Notify Flutter that the page is ready
-        function notifyFlutterReady() {
-          var message = JSON.stringify({ type: 'pageReady', theme: theme, timestamp: Date.now() });
-          if (window.FlutterWebView && window.FlutterWebView.postMessage) {
-            window.FlutterWebView.postMessage(message);
-          }
-          if (window.flutter_inappwebview && window.flutter_inappwebview.callHandler) {
-            window.flutter_inappwebview.callHandler('TasbeehEvent', message);
-          }
-          if (window._FlutterWebViewBridge) {
-            window._FlutterWebViewBridge(message);
-          }
+        function notifyFlutter() {
+          var msg = JSON.stringify({ type: 'pageReady', theme: theme, timestamp: Date.now() });
+          try { if (window.FlutterWebView) window.FlutterWebView.postMessage(msg); } catch(e){}
+          try { if (window.flutter_inappwebview) window.flutter_inappwebview.callHandler('TasbeehEvent', msg); } catch(e){}
+          try { if (window._FlutterWebViewBridge) window._FlutterWebViewBridge(msg); } catch(e){}
         }
         
-        // Notify when DOM is ready
-        if (document.readyState === 'complete') {
-          notifyFlutterReady();
-        } else {
-          window.addEventListener('load', notifyFlutterReady);
-        }
+        if (document.readyState === 'complete') notifyFlutter();
+        else window.addEventListener('load', notifyFlutter);
       })();
     </script>
     <script>
-      // Error reporting for Flutter WebView
       (function () {
         if (window.self === window.top) return;
         var reported = {};

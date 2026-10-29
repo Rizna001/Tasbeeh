@@ -1,7 +1,8 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 
 type SoundType = 'wooden' | 'glass' | 'metal' | 'stone' | 'bell' | 'none';
-type ThemeMode = 'dark' | 'light';
+type ThemeMode = 'dark' | 'light' | 'sepia';
+type FontSize = 'small' | 'medium' | 'large' | 'xlarge';
 
 interface LapRecord {
   lap: number;
@@ -9,93 +10,119 @@ interface LapRecord {
   timestamp: Date;
 }
 
-// Flutter WebView communication interface
-declare global {
-  interface Window {
-    FlutterWebView?: {
-      postMessage: (message: string) => void;
-    };
-    flutter_inappwebview?: {
-      callHandler: (handlerName: string, ...args: any[]) => void;
-    };
-    // For webview_flutter (official Flutter plugin)
-    _FlutterWebViewBridge?: (message: string) => void;
-  }
+interface DhikrOption {
+  id: string;
+  arabic: string;
+  transliteration: string;
+  meaning: string;
+  defaultTarget: number;
 }
 
-const TARGET_PRESETS = [33, 100, 1000];
+const TARGET_PRESETS = [33, 99, 100, 300, 500, 1000, 10000];
+
+const DHIKR_LIST: DhikrOption[] = [
+  { id: 'subhanallah', arabic: 'سُبْحَانَ اللَّهِ', transliteration: 'SubhanAllah', meaning: 'Glory be to Allah', defaultTarget: 33 },
+  { id: 'alhamdulillah', arabic: 'الْحَمْدُ لِلَّهِ', transliteration: 'Alhamdulillah', meaning: 'All praise is due to Allah', defaultTarget: 33 },
+  { id: 'allahuakbar', arabic: 'اللَّهُ أَكْبَرُ', transliteration: 'Allahu Akbar', meaning: 'Allah is the Greatest', defaultTarget: 33 },
+  { id: 'lailaha', arabic: 'لَا إِلَٰهَ إِلَّا اللَّهُ', transliteration: 'La ilaha illallah', meaning: 'There is no god but Allah', defaultTarget: 100 },
+  { id: 'astaghfirullah', arabic: 'أَسْتَغْفِرُ اللَّهَ', transliteration: 'Astaghfirullah', meaning: 'I seek forgiveness from Allah', defaultTarget: 100 },
+  { id: 'subhanwa', arabic: 'سُبْحَانَ اللَّهِ وَبِحَمْدِهِ', transliteration: 'SubhanAllahi wa bihamdihi', meaning: 'Glory and praise be to Allah', defaultTarget: 100 },
+  { id: 'salawat', arabic: 'اللَّهُمَّ صَلِّ عَلَى مُحَمَّد', transliteration: 'Allahumma salli ala Muhammad', meaning: 'O Allah, send blessings upon Muhammad', defaultTarget: 100 },
+  { id: 'lahawla', arabic: 'لَا حَوْلَ وَلَا قُوَّةَ إِلَّا بِاللَّهِ', transliteration: 'La hawla wa la quwwata illa billah', meaning: 'There is no power except with Allah', defaultTarget: 100 },
+  { id: 'none', arabic: '', transliteration: 'Nothing', meaning: 'No dhikr displayed', defaultTarget: 33 },
+  { id: 'custom', arabic: '', transliteration: 'Custom', meaning: 'Enter your own text', defaultTarget: 33 },
+];
+
 const SOUND_OPTIONS: { value: SoundType; label: string; icon: string }[] = [
+  { value: 'none', label: 'Silent', icon: '🔇' },
   { value: 'wooden', label: 'Wooden Bead', icon: '🪵' },
   { value: 'glass', label: 'Glass Bead', icon: '🔮' },
   { value: 'metal', label: 'Metal Click', icon: '🔔' },
   { value: 'stone', label: 'Stone Drop', icon: '🪨' },
   { value: 'bell', label: 'Temple Bell', icon: '🛕' },
-  { value: 'none', label: 'Silent', icon: '🔇' },
+];
+
+const FONT_SIZES: { value: FontSize; label: string; preview: string }[] = [
+  { value: 'small', label: 'Small', preview: 'Aa' },
+  { value: 'medium', label: 'Medium', preview: 'Aa' },
+  { value: 'large', label: 'Large', preview: 'Aa' },
+  { value: 'xlarge', label: 'X-Large', preview: 'Aa' },
 ];
 
 const THEMES = {
   dark: {
     bg1: '#00160D', bg2: '#003D2B', bg3: '#005A3C',
-    gold: '#D4AF37', goldLight: '#F5E6A3',
-    goldDim: 'rgba(212, 175, 55, 0.15)', goldBorder: 'rgba(212, 175, 55, 0.4)',
-    text: '#ffffff', textMuted: 'rgba(134, 239, 172, 0.6)', textDim: 'rgba(134, 239, 172, 0.4)',
-    cardBg: 'rgba(0, 61, 43, 0.5)', cardBorder: 'rgba(212, 175, 55, 0.2)',
+    gold: '#D4AF37', goldLight: '#F5E6A3', goldDark: '#A68A2A',
+    goldDim: 'rgba(212, 175, 55, 0.12)', goldBorder: 'rgba(212, 175, 55, 0.35)',
+    text: '#ffffff', textMuted: 'rgba(134, 239, 172, 0.65)', textDim: 'rgba(134, 239, 172, 0.4)',
+    cardBg: 'rgba(0, 61, 43, 0.55)', cardBorder: 'rgba(212, 175, 55, 0.18)',
     modalBg: 'linear-gradient(180deg, #003D2B, #00160D)',
-    ringTrack: '#003D2B',
+    ringTrack: 'rgba(0, 90, 60, 0.5)',
     buttonBg: 'radial-gradient(circle at 30% 30%, #005A3C, #003D2B, #00160D)',
-    shadow: 'rgba(0,0,0,0.4)', overlay: 'rgba(0,0,0,0.6)',
-    progressGlow: 'drop-shadow(0 0 8px rgba(212, 175, 55, 0.4))',
-    textGlow: '0 0 20px rgba(212, 175, 55, 0.3)',
+    shadow: 'rgba(0,0,0,0.5)', overlay: 'rgba(0,0,0,0.65)',
+    progressGlow: 'drop-shadow(0 0 10px rgba(212, 175, 55, 0.5))',
+    textGlow: '0 0 30px rgba(212, 175, 55, 0.4), 0 2px 10px rgba(0,0,0,0.5)',
+    accent: '#D4AF37', accentSoft: 'rgba(212, 175, 55, 0.2)',
+    success: '#4ade80',
   },
   light: {
-    bg1: '#f0f7f4', bg2: '#d4edda', bg3: '#b8e0c8',
-    gold: '#8B6914', goldLight: '#C49B2A',
-    goldDim: 'rgba(139, 105, 20, 0.1)', goldBorder: 'rgba(139, 105, 20, 0.4)',
-    text: '#1a1a1a', textMuted: 'rgba(0, 61, 43, 0.7)', textDim: 'rgba(0, 61, 43, 0.5)',
-    cardBg: 'rgba(255, 255, 255, 0.85)', cardBorder: 'rgba(139, 105, 20, 0.25)',
-    modalBg: 'linear-gradient(180deg, #ffffff, #f0f7f4)',
+    bg1: '#f4faf7', bg2: '#d4edda', bg3: '#b8e0c8',
+    gold: '#7A5A0A', goldLight: '#A68A2A', goldDark: '#5A4207',
+    goldDim: 'rgba(122, 90, 10, 0.08)', goldBorder: 'rgba(122, 90, 10, 0.3)',
+    text: '#1a2e1a', textMuted: 'rgba(0, 61, 43, 0.7)', textDim: 'rgba(0, 61, 43, 0.45)',
+    cardBg: 'rgba(255, 255, 255, 0.85)', cardBorder: 'rgba(122, 90, 10, 0.2)',
+    modalBg: 'linear-gradient(180deg, #ffffff, #f4faf7)',
     ringTrack: '#d4edda',
-    buttonBg: 'radial-gradient(circle at 30% 30%, #b8e0c8, #d4edda, #f0f7f4)',
+    buttonBg: 'radial-gradient(circle at 30% 30%, #b8e0c8, #d4edda, #f4faf7)',
     shadow: 'rgba(0,0,0,0.12)', overlay: 'rgba(0,0,0,0.35)',
-    progressGlow: 'drop-shadow(0 0 6px rgba(139, 105, 20, 0.3))',
+    progressGlow: 'drop-shadow(0 0 6px rgba(122, 90, 10, 0.25))',
     textGlow: 'none',
+    accent: '#7A5A0A', accentSoft: 'rgba(122, 90, 10, 0.12)',
+    success: '#16a34a',
+  },
+  sepia: {
+    bg1: '#2b1d0e', bg2: '#4a3420', bg3: '#6b4d30',
+    gold: '#E8C56D', goldLight: '#F5E6A3', goldDark: '#B89A4A',
+    goldDim: 'rgba(232, 197, 109, 0.12)', goldBorder: 'rgba(232, 197, 109, 0.35)',
+    text: '#f5e6d3', textMuted: 'rgba(245, 230, 211, 0.7)', textDim: 'rgba(245, 230, 211, 0.45)',
+    cardBg: 'rgba(74, 52, 32, 0.6)', cardBorder: 'rgba(232, 197, 109, 0.2)',
+    modalBg: 'linear-gradient(180deg, #4a3420, #2b1d0e)',
+    ringTrack: 'rgba(107, 77, 48, 0.6)',
+    buttonBg: 'radial-gradient(circle at 30% 30%, #6b4d30, #4a3420, #2b1d0e)',
+    shadow: 'rgba(0,0,0,0.5)', overlay: 'rgba(0,0,0,0.65)',
+    progressGlow: 'drop-shadow(0 0 10px rgba(232, 197, 109, 0.4))',
+    textGlow: '0 0 30px rgba(232, 197, 109, 0.3)',
+    accent: '#E8C56D', accentSoft: 'rgba(232, 197, 109, 0.2)',
+    success: '#a3e635',
   },
 };
 
-// Flutter WebView bridge helper
-function sendToFlutter(type: string, data: Record<string, any> = {}) {
-  const message = JSON.stringify({ type, data, timestamp: Date.now() });
-  
-  // webview_flutter (official Flutter plugin)
-  if (window.FlutterWebView?.postMessage) {
-    window.FlutterWebView.postMessage(message);
+declare global {
+  interface Window {
+    FlutterWebView?: { postMessage: (message: string) => void; };
+    flutter_inappwebview?: { callHandler: (handlerName: string, ...args: any[]) => void; };
+    _FlutterWebViewBridge?: (message: string) => void;
   }
-  // flutter_inappwebview
-  if (window.flutter_inappwebview?.callHandler) {
-    window.flutter_inappwebview.callHandler('TasbeehEvent', message);
-  }
-  // Custom bridge
-  if (window._FlutterWebViewBridge) {
-    window._FlutterWebViewBridge(message);
-  }
-  // postMessage fallback for iframe embedding
-  try {
-    window.parent?.postMessage({ channel: 'tasbeeh', ...JSON.parse(message) }, '*');
-  } catch (_) {}
 }
 
-// Detect if running inside Flutter WebView
-function isFlutterWebView(): boolean {
-  const ua = navigator.userAgent.toLowerCase();
-  return !!(
-    window.FlutterWebView ||
-    window.flutter_inappwebview ||
-    window._FlutterWebViewBridge ||
-    ua.includes('flutter') ||
-    // Check for common Flutter WebView indicators
-    (window as any).__flutter_bridge ||
-    (window as any).webkit?.messageHandlers?.flutterWebView
-  );
+function sendToFlutter(type: string, data: Record<string, any> = {}) {
+  const message = JSON.stringify({ type, data, timestamp: Date.now() });
+  try { window.FlutterWebView?.postMessage(message); } catch (_) {}
+  try { window.flutter_inappwebview?.callHandler('TasbeehEvent', message); } catch (_) {}
+  try { window._FlutterWebViewBridge?.(message); } catch (_) {}
+  try { window.parent?.postMessage({ channel: 'tasbeeh', type, data }, '*'); } catch (_) {}
+}
+
+function loadState<T>(key: string, fallback: T): T {
+  try {
+    const saved = localStorage.getItem(`tasbeeh-${key}`);
+    if (saved) return JSON.parse(saved) as T;
+  } catch (_) {}
+  return fallback;
+}
+
+function saveState(key: string, value: any) {
+  try { localStorage.setItem(`tasbeeh-${key}`, JSON.stringify(value)); } catch (_) {}
 }
 
 function App() {
@@ -103,44 +130,41 @@ function App() {
   const [target, setTarget] = useState(33);
   const [laps, setLaps] = useState<LapRecord[]>([]);
   const [currentLap, setCurrentLap] = useState(1);
-  const [soundType, setSoundType] = useState<SoundType>('wooden');
-  const [showSettings, setShowSettings] = useState(false);
+  const [soundType, setSoundType] = useState<SoundType>(() => loadState('sound', 'none' as SoundType));
+  const [theme, setTheme] = useState<ThemeMode>(() => loadState('theme', 'dark' as ThemeMode));
+  const [fontSize, setFontSize] = useState<FontSize>(() => loadState('fontSize', 'medium' as FontSize));
+  const [selectedDhikr, setSelectedDhikr] = useState<string>(() => loadState('dhikr', 'none'));
+  const [customDhikr, setCustomDhikr] = useState<string>(() => loadState('customDhikr', ''));
+  const [showSoundPanel, setShowSoundPanel] = useState(false);
   const [showLaps, setShowLaps] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [showDhikrPicker, setShowDhikrPicker] = useState(false);
+  const [showTargetPicker, setShowTargetPicker] = useState(false);
   const [isPressed, setIsPressed] = useState(false);
-  const [totalAllTime, setTotalAllTime] = useState(0);
+  const [totalAllTime, setTotalAllTime] = useState(() => loadState('total', 0));
   const [showCelebration, setShowCelebration] = useState(false);
-  const [theme, setTheme] = useState<ThemeMode>(() => {
-    const saved = localStorage.getItem('tasbeeh-theme');
-    return (saved === 'light' || saved === 'dark') ? saved : 'dark';
-  });
-  const [inFlutter, setInFlutter] = useState(false);
   const [screenSize, setScreenSize] = useState<'xs' | 'sm' | 'md' | 'lg' | 'xl'>('sm');
   const [isLandscape, setIsLandscape] = useState(false);
+  const [ripple, setRipple] = useState(false);
 
   const audioContextRef = useRef<AudioContext | null>(null);
   const t = THEMES[theme];
 
-  // Detect Flutter WebView environment
-  useEffect(() => {
-    const flutterDetected = isFlutterWebView();
-    setInFlutter(flutterDetected);
-    if (flutterDetected) {
-      sendToFlutter('appReady', { theme, count, target });
-    }
-  }, []);
+  // Font size multipliers
+  const fontScale = fontSize === 'small' ? 0.8 : fontSize === 'medium' ? 1 : fontSize === 'large' ? 1.25 : 1.55;
 
-  // Save theme & notify Flutter
-  useEffect(() => {
-    localStorage.setItem('tasbeeh-theme', theme);
-    document.documentElement.setAttribute('data-theme', theme);
-    sendToFlutter('themeChanged', { theme });
-  }, [theme]);
+  // Persist state
+  useEffect(() => { saveState('sound', soundType); }, [soundType]);
+  useEffect(() => { saveState('theme', theme); document.documentElement.setAttribute('data-theme', theme); }, [theme]);
+  useEffect(() => { saveState('fontSize', fontSize); }, [fontSize]);
+  useEffect(() => { saveState('dhikr', selectedDhikr); }, [selectedDhikr]);
+  useEffect(() => { saveState('customDhikr', customDhikr); }, [customDhikr]);
+  useEffect(() => { saveState('total', totalAllTime); }, [totalAllTime]);
 
-  // Responsive layout detection
+  // Responsive
   useEffect(() => {
-    const updateLayout = () => {
-      const w = window.innerWidth;
-      const h = window.innerHeight;
+    const update = () => {
+      const w = window.innerWidth, h = window.innerHeight;
       setIsLandscape(w > h);
       if (w < 360) setScreenSize('xs');
       else if (w < 640) setScreenSize('sm');
@@ -148,145 +172,91 @@ function App() {
       else if (w < 1440) setScreenSize('lg');
       else setScreenSize('xl');
     };
-    updateLayout();
-    window.addEventListener('resize', updateLayout);
-    window.addEventListener('orientationchange', updateLayout);
+    update();
+    window.addEventListener('resize', update);
+    window.addEventListener('orientationchange', update);
+    return () => { window.removeEventListener('resize', update); window.removeEventListener('orientationchange', update); };
+  }, []);
 
-    // Listen for messages from Flutter
-    const handleMessage = (event: MessageEvent) => {
+  // Listen for Flutter messages
+  useEffect(() => {
+    sendToFlutter('appReady', { theme, fontSize });
+    const handler = (event: MessageEvent) => {
       if (event.data?.channel === 'flutter-tasbeeh') {
         const { action, payload } = event.data;
-        switch (action) {
-          case 'setTheme':
-            if (payload === 'light' || payload === 'dark') setTheme(payload);
-            break;
-          case 'reset':
-            handleReset();
-            break;
-          case 'getState':
-            sendToFlutter('state', { count, target, currentLap, laps: laps.length, totalAllTime, theme });
-            break;
-        }
+        if (action === 'setTheme' && (payload === 'dark' || payload === 'light' || payload === 'sepia')) setTheme(payload);
+        if (action === 'reset') handleReset();
       }
     };
-    window.addEventListener('message', handleMessage);
-
-    return () => {
-      window.removeEventListener('resize', updateLayout);
-      window.removeEventListener('orientationchange', updateLayout);
-      window.removeEventListener('message', handleMessage);
-    };
-  }, [count, target, currentLap, laps.length, totalAllTime, theme]);
+    window.addEventListener('message', handler);
+    return () => window.removeEventListener('message', handler);
+  }, [theme, fontSize]);
 
   const getAudioContext = useCallback(() => {
     try {
       if (!audioContextRef.current) {
-        const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
-        if (AudioCtx) {
-          audioContextRef.current = new AudioCtx();
-        }
+        const AC = window.AudioContext || (window as any).webkitAudioContext;
+        if (AC) audioContextRef.current = new AC();
       }
-      if (audioContextRef.current?.state === 'suspended') {
-        audioContextRef.current.resume();
-      }
-    } catch (_) {
-      // Audio not available in some WebView contexts
-    }
+      if (audioContextRef.current?.state === 'suspended') audioContextRef.current.resume();
+    } catch (_) {}
     return audioContextRef.current;
   }, []);
 
   const playSound = useCallback((type: SoundType) => {
     if (type === 'none') return;
     const ctx = getAudioContext();
-    if (!ctx) return; // Audio unavailable (some Flutter WebView configs)
+    if (!ctx) return;
     const now = ctx.currentTime;
-
     try {
       switch (type) {
         case 'wooden': {
-          const osc = ctx.createOscillator();
-          const gain = ctx.createGain();
-          const filter = ctx.createBiquadFilter();
-          filter.type = 'bandpass'; filter.frequency.value = 800; filter.Q.value = 2;
-          osc.type = 'triangle';
-          osc.frequency.setValueAtTime(400, now);
-          osc.frequency.exponentialRampToValueAtTime(100, now + 0.08);
-          gain.gain.setValueAtTime(0.4, now);
-          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
-          osc.connect(filter); filter.connect(gain); gain.connect(ctx.destination);
-          osc.start(now); osc.stop(now + 0.1);
+          const o = ctx.createOscillator(), g = ctx.createGain(), f = ctx.createBiquadFilter();
+          f.type = 'bandpass'; f.frequency.value = 800; f.Q.value = 2;
+          o.type = 'triangle'; o.frequency.setValueAtTime(400, now); o.frequency.exponentialRampToValueAtTime(100, now + 0.08);
+          g.gain.setValueAtTime(0.4, now); g.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+          o.connect(f); f.connect(g); g.connect(ctx.destination); o.start(now); o.stop(now + 0.1);
           break;
         }
         case 'glass': {
-          const osc1 = ctx.createOscillator();
-          const osc2 = ctx.createOscillator();
-          const gain = ctx.createGain();
-          osc1.type = 'sine';
-          osc1.frequency.setValueAtTime(2000, now);
-          osc1.frequency.exponentialRampToValueAtTime(1500, now + 0.15);
-          osc2.type = 'sine';
-          osc2.frequency.setValueAtTime(3000, now);
-          osc2.frequency.exponentialRampToValueAtTime(2500, now + 0.15);
-          gain.gain.setValueAtTime(0.2, now);
-          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
-          osc1.connect(gain); osc2.connect(gain); gain.connect(ctx.destination);
-          osc1.start(now); osc2.start(now); osc1.stop(now + 0.2); osc2.stop(now + 0.2);
+          const o1 = ctx.createOscillator(), o2 = ctx.createOscillator(), g = ctx.createGain();
+          o1.type = 'sine'; o1.frequency.setValueAtTime(2000, now); o1.frequency.exponentialRampToValueAtTime(1500, now + 0.15);
+          o2.type = 'sine'; o2.frequency.setValueAtTime(3000, now); o2.frequency.exponentialRampToValueAtTime(2500, now + 0.15);
+          g.gain.setValueAtTime(0.2, now); g.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+          o1.connect(g); o2.connect(g); g.connect(ctx.destination); o1.start(now); o2.start(now); o1.stop(now + 0.2); o2.stop(now + 0.2);
           break;
         }
         case 'metal': {
-          const osc = ctx.createOscillator();
-          const gain = ctx.createGain();
-          osc.type = 'square';
-          osc.frequency.setValueAtTime(3000, now);
-          osc.frequency.exponentialRampToValueAtTime(500, now + 0.05);
-          gain.gain.setValueAtTime(0.15, now);
-          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
-          osc.connect(gain); gain.connect(ctx.destination);
-          osc.start(now); osc.stop(now + 0.08);
+          const o = ctx.createOscillator(), g = ctx.createGain();
+          o.type = 'square'; o.frequency.setValueAtTime(3000, now); o.frequency.exponentialRampToValueAtTime(500, now + 0.05);
+          g.gain.setValueAtTime(0.15, now); g.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+          o.connect(g); g.connect(ctx.destination); o.start(now); o.stop(now + 0.08);
           break;
         }
         case 'stone': {
-          const osc = ctx.createOscillator();
-          const gain = ctx.createGain();
-          const filter = ctx.createBiquadFilter();
-          filter.type = 'lowpass'; filter.frequency.value = 400;
-          osc.type = 'sine';
-          osc.frequency.setValueAtTime(200, now);
-          osc.frequency.exponentialRampToValueAtTime(60, now + 0.12);
-          gain.gain.setValueAtTime(0.5, now);
-          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
-          osc.connect(filter); filter.connect(gain); gain.connect(ctx.destination);
-          osc.start(now); osc.stop(now + 0.15);
+          const o = ctx.createOscillator(), g = ctx.createGain(), f = ctx.createBiquadFilter();
+          f.type = 'lowpass'; f.frequency.value = 400;
+          o.type = 'sine'; o.frequency.setValueAtTime(200, now); o.frequency.exponentialRampToValueAtTime(60, now + 0.12);
+          g.gain.setValueAtTime(0.5, now); g.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+          o.connect(f); f.connect(g); g.connect(ctx.destination); o.start(now); o.stop(now + 0.15);
           break;
         }
         case 'bell': {
-          const osc1 = ctx.createOscillator();
-          const osc2 = ctx.createOscillator();
-          const osc3 = ctx.createOscillator();
-          const gain = ctx.createGain();
-          osc1.type = 'sine'; osc1.frequency.value = 800;
-          osc2.type = 'sine'; osc2.frequency.value = 1200;
-          osc3.type = 'sine'; osc3.frequency.value = 1600;
-          gain.gain.setValueAtTime(0.25, now);
-          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
-          osc1.connect(gain); osc2.connect(gain); osc3.connect(gain); gain.connect(ctx.destination);
-          osc1.start(now); osc2.start(now); osc3.start(now);
-          osc1.stop(now + 0.5); osc2.stop(now + 0.5); osc3.stop(now + 0.5);
+          const o1 = ctx.createOscillator(), o2 = ctx.createOscillator(), o3 = ctx.createOscillator(), g = ctx.createGain();
+          o1.type = 'sine'; o1.frequency.value = 800;
+          o2.type = 'sine'; o2.frequency.value = 1200;
+          o3.type = 'sine'; o3.frequency.value = 1600;
+          g.gain.setValueAtTime(0.25, now); g.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+          o1.connect(g); o2.connect(g); o3.connect(g); g.connect(ctx.destination);
+          o1.start(now); o2.start(now); o3.start(now); o1.stop(now + 0.5); o2.stop(now + 0.5); o3.stop(now + 0.5);
           break;
         }
       }
-    } catch (_) {
-      // Sound playback failed - continue silently
-    }
+    } catch (_) {}
   }, [getAudioContext]);
 
-  // Haptic feedback - works in Flutter WebView via native bridge
   const triggerHaptic = useCallback(() => {
-    // Try native haptic first
-    if (navigator.vibrate) {
-      try { navigator.vibrate(30); } catch (_) {}
-    }
-    // Notify Flutter to trigger native haptic
+    try { navigator.vibrate?.(30); } catch (_) {}
     sendToFlutter('haptic', { type: 'light', duration: 30 });
   }, []);
 
@@ -296,8 +266,8 @@ function App() {
     setTotalAllTime(prev => prev + 1);
     playSound(soundType);
     triggerHaptic();
-
-    // Notify Flutter of count change
+    setRipple(true);
+    setTimeout(() => setRipple(false), 400);
     sendToFlutter('count', { count: newCount, target, totalAllTime: totalAllTime + 1 });
 
     if (newCount >= target) {
@@ -305,183 +275,233 @@ function App() {
       setCurrentLap(prev => prev + 1);
       setCount(0);
       setShowCelebration(true);
-      setTimeout(() => setShowCelebration(false), 2000);
-      
-      // Strong haptic for lap completion
-      if (navigator.vibrate) {
-        try { navigator.vibrate([100, 50, 100, 50, 200]); } catch (_) {}
-      }
+      setTimeout(() => setShowCelebration(false), 2500);
+      try { navigator.vibrate?.([100, 50, 100, 50, 200]); } catch (_) {}
       sendToFlutter('lapComplete', { lap: currentLap, target });
       sendToFlutter('haptic', { type: 'heavy', pattern: [100, 50, 100, 50, 200] });
     }
   }, [count, target, currentLap, soundType, totalAllTime, playSound, triggerHaptic]);
 
   const handleReset = useCallback(() => {
-    setCount(0);
-    setCurrentLap(1);
-    setLaps([]);
+    setCount(0); setCurrentLap(1); setLaps([]);
     sendToFlutter('reset', {});
   }, []);
 
+  const handleDhikrSelect = (id: string) => {
+    setSelectedDhikr(id);
+    const dhikr = DHIKR_LIST.find(d => d.id === id);
+    if (dhikr && id !== 'custom' && id !== 'none') {
+      setTarget(dhikr.defaultTarget);
+      setCount(0); setCurrentLap(1); setLaps([]);
+    }
+    setShowDhikrPicker(false);
+  };
+
   const progress = target > 0 ? (count / target) * 100 : 0;
+  const currentDhikr = DHIKR_LIST.find(d => d.id === selectedDhikr);
+  const isSmall = screenSize === 'xs';
+  const isTiny = screenSize === 'xs' && window.innerHeight < 600;
 
-  // Keyboard support (desktop Flutter)
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.code === 'Space' || e.code === 'Enter') {
-        e.preventDefault();
-        handleCount();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleCount]);
-
-  // Responsive sizing
+  // Dynamic sizing
   const getRingSize = () => {
-    if (screenSize === 'xs') return 'min(52vw, 45vh, 200px)';
-    if (screenSize === 'sm') return 'min(58vw, 42vh, 250px)';
-    if (screenSize === 'md') return 'min(42vw, 40vh, 290px)';
-    if (screenSize === 'lg') return 'min(32vw, 38vh, 310px)';
-    return 'min(28vw, 32vh, 340px)';
+    if (isTiny) return 'min(48vw, 38vh, 180px)';
+    if (screenSize === 'xs') return 'min(52vw, 40vh, 200px)';
+    if (screenSize === 'sm') return 'min(56vw, 38vh, 240px)';
+    if (screenSize === 'md') return 'min(40vw, 38vh, 280px)';
+    if (screenSize === 'lg') return 'min(30vw, 35vh, 300px)';
+    return 'min(26vw, 30vh, 320px)';
   };
 
   const getButtonSize = () => {
-    if (screenSize === 'xs') return 'min(36vw, 32vh, 140px)';
-    if (screenSize === 'sm') return 'min(40vw, 30vh, 165px)';
-    if (screenSize === 'md') return 'min(28vw, 26vh, 185px)';
-    if (screenSize === 'lg') return 'min(20vw, 22vh, 195px)';
-    return 'min(16vw, 18vh, 205px)';
+    if (isTiny) return 'min(32vw, 26vh, 130px)';
+    if (screenSize === 'xs') return 'min(35vw, 28vh, 145px)';
+    if (screenSize === 'sm') return 'min(38vw, 26vh, 160px)';
+    if (screenSize === 'md') return 'min(26vw, 24vh, 180px)';
+    if (screenSize === 'lg') return 'min(18vw, 20vh, 190px)';
+    return 'min(15vw, 18vh, 200px)';
   };
 
-  const toggleTheme = () => {
-    setTheme(prev => prev === 'dark' ? 'light' : 'dark');
+  // Counter font size scales with both screen size AND user preference
+  const counterFontSize = () => {
+    const base = isTiny ? 2.2 : screenSize === 'xs' ? 2.8 : screenSize === 'sm' ? 3.5 : 4.2;
+    return `${base * fontScale}rem`;
   };
-
-  const isSmall = screenSize === 'xs';
 
   return (
     <div
-      className="w-full min-h-[100dvh] flex flex-col overflow-hidden"
+      className="w-full flex flex-col overflow-hidden"
       style={{
-        background: `linear-gradient(160deg, ${t.bg1} 0%, ${t.bg2} 40%, ${t.bg3} 100%)`,
+        background: `linear-gradient(160deg, ${t.bg1} 0%, ${t.bg2} 45%, ${t.bg3} 100%)`,
         color: t.text,
-        transition: 'background 0.4s ease, color 0.4s ease',
+        transition: 'background 0.5s ease, color 0.5s ease',
         minHeight: '100dvh',
         height: '100dvh',
       }}
     >
-      {/* Background Pattern */}
+      {/* Animated background pattern */}
       <div className="fixed inset-0 pointer-events-none" style={{
-        opacity: 0.03,
+        opacity: 0.04,
         backgroundImage: `radial-gradient(circle, ${t.gold} 1px, transparent 1px)`,
-        backgroundSize: isSmall ? '28px 28px' : '48px 48px',
+        backgroundSize: isSmall ? '26px 26px' : '44px 44px',
       }} />
 
       {/* Celebration Overlay */}
       {showCelebration && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center pointer-events-none">
-          <div className="text-center animate-bounce">
-            <div style={{ fontSize: isSmall ? '2.5rem' : '3.5rem' }}>✨</div>
-            <div className="font-bold mt-2" style={{ color: t.gold, fontSize: isSmall ? '1.2rem' : '1.8rem' }}>
+          <div className="text-center" style={{ animation: 'celebPop 0.6s ease-out' }}>
+            <div style={{ fontSize: isSmall ? '3rem' : '4.5rem' }}>✨</div>
+            <div className="font-bold mt-2" style={{ color: t.gold, fontSize: isSmall ? '1.3rem' : '2rem', textShadow: t.textGlow }}>
               Target Complete!
             </div>
-            <div className="mt-1" style={{ color: t.textMuted, fontSize: isSmall ? '0.8rem' : '1rem' }}>
+            <div className="mt-1" style={{ color: t.textMuted, fontSize: isSmall ? '0.85rem' : '1.05rem' }}>
               Lap {currentLap - 1} of {target}x ✓
             </div>
           </div>
         </div>
       )}
 
-      {/* Top Bar */}
+      {/* Top Bar - Dhikr Selector */}
       <header
         className="flex items-center justify-between flex-shrink-0"
         style={{
-          padding: `${isSmall ? '0.5rem' : '0.75rem'} ${isSmall ? '0.75rem' : '1.25rem'}`,
-          paddingTop: `max(${isSmall ? '0.5rem' : '0.75rem'}, env(safe-area-inset-top))`,
+          padding: `${isSmall ? '0.4rem' : '0.6rem'} ${isSmall ? '0.6rem' : '1rem'}`,
+          paddingTop: `max(${isSmall ? '0.4rem' : '0.6rem'}, env(safe-area-inset-top))`,
         }}
       >
-        <div className="text-center flex-1">
-          <h1 className="font-bold" style={{ color: t.gold, fontSize: isSmall ? '1rem' : '1.35rem' }}>
-            بِسْمِ اللَّهِ
-          </h1>
-          <p style={{ color: t.textDim, fontSize: isSmall ? '0.55rem' : '0.7rem' }}>
-            Digital Tasbeeh Counter {inFlutter && '• Flutter'}
-          </p>
-        </div>
         <button
-          onClick={toggleTheme}
-          className="flex-shrink-0 rounded-full flex items-center justify-center transition-all active:scale-90"
+          onClick={() => setShowDhikrPicker(true)}
+          className="flex-1 text-left rounded-xl transition-all active:scale-[0.98]"
           style={{
-            width: isSmall ? '34px' : '40px',
-            height: isSmall ? '34px' : '40px',
+            padding: isSmall ? '0.35rem 0.6rem' : '0.5rem 0.8rem',
             backgroundColor: t.goldDim,
-            border: `1.5px solid ${t.goldBorder}`,
+            border: `1px solid ${t.goldBorder}`,
           }}
-          aria-label="Toggle theme"
         >
-          <span style={{ fontSize: isSmall ? '0.95rem' : '1.15rem' }}>
-            {theme === 'dark' ? '☀️' : '🌙'}
-          </span>
+          <div style={{ color: t.textDim, fontSize: isSmall ? '0.55rem' : '0.65rem', letterSpacing: '0.05em' }}>
+            DHIKR
+          </div>
+          <div className="font-semibold truncate" style={{ color: t.gold, fontSize: isSmall ? '0.75rem' : '0.9rem' }}>
+            {currentDhikr?.transliteration || 'Select...'}
+          </div>
         </button>
+
+        {/* Theme Quick Switch */}
+        <div className="flex gap-1 ml-2 flex-shrink-0">
+          {(['dark', 'light', 'sepia'] as ThemeMode[]).map((mode) => (
+            <button
+              key={mode}
+              onClick={() => setTheme(mode)}
+              className="rounded-full flex items-center justify-center transition-all active:scale-90"
+              style={{
+                width: isSmall ? '30px' : '36px',
+                height: isSmall ? '30px' : '36px',
+                backgroundColor: theme === mode ? t.gold : t.goldDim,
+                border: `1.5px solid ${theme === mode ? t.gold : t.goldBorder}`,
+              }}
+              aria-label={`${mode} theme`}
+            >
+              <span style={{ fontSize: isSmall ? '0.85rem' : '1rem' }}>
+                {mode === 'dark' ? '🌙' : mode === 'light' ? '☀️' : '📜'}
+              </span>
+            </button>
+          ))}
+        </div>
       </header>
 
-      {/* Target Presets */}
-      <div className="flex justify-center gap-1.5 sm:gap-2 flex-shrink-0" style={{ padding: '0.4rem 0.75rem' }}>
-        {TARGET_PRESETS.map((preset) => (
+      {/* Target Presets - Scrollable */}
+      <div className="flex-shrink-0 px-2" style={{ paddingBottom: '0.3rem' }}>
+        <div className="flex gap-1.5 overflow-x-auto pb-1 justify-center flex-wrap" style={{ scrollbarWidth: 'none' }}>
+          {TARGET_PRESETS.map((preset) => (
+            <button
+              key={preset}
+              onClick={() => { setTarget(preset); setCount(0); setCurrentLap(1); setLaps([]); sendToFlutter('targetChanged', { target: preset }); }}
+              className="rounded-full font-semibold transition-all duration-200 active:scale-95 flex-shrink-0"
+              style={{
+                padding: isSmall ? '0.2rem 0.55rem' : '0.3rem 0.8rem',
+                fontSize: isSmall ? '0.6rem' : '0.75rem',
+                backgroundColor: target === preset ? t.gold : 'transparent',
+                color: target === preset ? t.bg1 : t.gold,
+                border: `1.5px solid ${t.gold}`,
+                transform: target === preset ? 'scale(1.08)' : 'scale(1)',
+                boxShadow: target === preset ? `0 0 15px ${t.goldDim}` : 'none',
+              }}
+            >
+              {preset >= 1000 ? `${preset / 1000}k` : preset}x
+            </button>
+          ))}
           <button
-            key={preset}
-            onClick={() => { setTarget(preset); setCount(0); setCurrentLap(1); setLaps([]); sendToFlutter('targetChanged', { target: preset }); }}
-            className="rounded-full font-semibold transition-all duration-200 active:scale-95"
+            onClick={() => setShowTargetPicker(true)}
+            className="rounded-full font-semibold transition-all active:scale-95 flex-shrink-0"
             style={{
-              padding: isSmall ? '0.25rem 0.6rem' : '0.35rem 0.9rem',
-              fontSize: isSmall ? '0.65rem' : '0.8rem',
-              backgroundColor: target === preset ? t.gold : 'transparent',
-              color: target === preset ? t.bg1 : t.gold,
-              border: `1.5px solid ${t.gold}`,
-              transform: target === preset ? 'scale(1.05)' : 'scale(1)',
-              boxShadow: target === preset ? `0 0 12px ${t.goldDim}` : 'none',
+              padding: isSmall ? '0.2rem 0.55rem' : '0.3rem 0.8rem',
+              fontSize: isSmall ? '0.6rem' : '0.75rem',
+              backgroundColor: 'transparent',
+              color: t.gold,
+              border: `1.5px dashed ${t.goldBorder}`,
             }}
           >
-            {preset}x
+            Custom
           </button>
-        ))}
+        </div>
       </div>
 
       {/* Main Content */}
       <main
-        className={`flex-1 flex ${isLandscape && screenSize !== 'xl' ? 'flex-row' : 'flex-col'} items-center justify-center gap-2 sm:gap-4 px-3`}
+        className={`flex-1 flex ${isLandscape && screenSize !== 'xl' ? 'flex-row' : 'flex-col'} items-center justify-center gap-1 sm:gap-3 px-2`}
         style={{ minHeight: 0 }}
       >
-        {/* Progress Ring */}
+        {/* Dhikr Display */}
+        {selectedDhikr !== 'none' && (
+          <div className="text-center flex-shrink-0" style={{ padding: '0.3rem 0' }}>
+            {currentDhikr?.arabic && (
+              <div className="font-bold" style={{
+                color: t.gold,
+                fontSize: `${(isSmall ? 1.1 : 1.5) * fontScale}rem`,
+                textShadow: t.textGlow,
+                lineHeight: 1.3,
+                direction: 'rtl',
+              }}>
+                {selectedDhikr === 'custom' ? customDhikr || 'Custom Dhikr' : currentDhikr.arabic}
+              </div>
+            )}
+            {currentDhikr?.meaning && selectedDhikr !== 'custom' && (
+              <div style={{ color: t.textDim, fontSize: `${(isSmall ? 0.6 : 0.75) * fontScale}rem`, marginTop: '0.15rem' }}>
+                {currentDhikr.meaning}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Progress Ring + Counter */}
         <div
           className="relative flex items-center justify-center flex-shrink-0"
           style={{ width: getRingSize(), height: getRingSize() }}
         >
           <svg className="absolute inset-0 w-full h-full -rotate-90" viewBox="0 0 256 256">
-            <circle cx="128" cy="128" r="116" fill="none" stroke={t.ringTrack} strokeWidth="8" />
+            <circle cx="128" cy="128" r="116" fill="none" stroke={t.ringTrack} strokeWidth="10" />
             <circle
-              cx="128" cy="128" r="116" fill="none" stroke={t.gold} strokeWidth="8"
+              cx="128" cy="128" r="116" fill="none" stroke={t.gold} strokeWidth="10"
               strokeDasharray={`${2 * Math.PI * 116}`}
               strokeDashoffset={`${2 * Math.PI * 116 * (1 - progress / 100)}`}
               strokeLinecap="round"
-              className="transition-all duration-200"
+              className="transition-all duration-150"
               style={{ filter: t.progressGlow }}
             />
           </svg>
           <div className="text-center z-10">
             <div className="font-bold tabular-nums" style={{
               color: t.gold,
-              fontSize: isSmall ? '2rem' : screenSize === 'sm' ? '2.8rem' : '3.5rem',
+              fontSize: counterFontSize(),
               textShadow: t.textGlow,
               lineHeight: 1,
+              letterSpacing: '-0.02em',
             }}>
               {count}
             </div>
-            <div style={{ color: t.textMuted, fontSize: isSmall ? '0.65rem' : '0.85rem' }}>
+            <div style={{ color: t.textMuted, fontSize: `${(isSmall ? 0.75 : 0.95) * fontScale}rem`, marginTop: '0.2rem' }}>
               / {target}
             </div>
-            <div style={{ color: t.textDim, fontSize: isSmall ? '0.55rem' : '0.7rem' }}>
+            <div style={{ color: t.textDim, fontSize: `${(isSmall ? 0.6 : 0.75) * fontScale}rem` }}>
               {Math.round(progress)}%
             </div>
           </div>
@@ -495,22 +515,29 @@ function App() {
           onTouchStart={(e) => { e.preventDefault(); setIsPressed(true); }}
           onTouchEnd={() => setIsPressed(false)}
           onClick={handleCount}
-          className="rounded-full flex items-center justify-center select-none flex-shrink-0"
+          className="rounded-full flex items-center justify-center select-none flex-shrink-0 relative overflow-hidden"
           style={{
             width: getButtonSize(),
             height: getButtonSize(),
             background: t.buttonBg,
             boxShadow: isPressed
-              ? `inset 0 4px 15px ${t.shadow}, 0 0 20px ${t.goldDim}`
-              : `0 8px 30px ${t.shadow}, 0 0 30px ${t.goldDim}, inset 0 -3px 8px ${t.shadow}`,
+              ? `inset 0 6px 20px ${t.shadow}, 0 0 25px ${t.goldDim}`
+              : `0 10px 40px ${t.shadow}, 0 0 40px ${t.goldDim}, inset 0 -4px 10px ${t.shadow}`,
             border: `3px solid ${t.gold}`,
-            transform: isPressed ? 'scale(0.92)' : 'scale(1)',
+            transform: isPressed ? 'scale(0.9)' : 'scale(1)',
             transition: 'transform 0.1s ease, box-shadow 0.1s ease',
           }}
         >
-          <div className="text-center">
-            <div style={{ fontSize: isSmall ? '1.5rem' : screenSize === 'sm' ? '2rem' : '2.6rem' }}>📿</div>
-            <div className="font-bold" style={{ color: t.gold, fontSize: isSmall ? '0.6rem' : '0.8rem' }}>
+          {/* Ripple effect */}
+          {ripple && (
+            <div className="absolute inset-0 rounded-full" style={{
+              background: `radial-gradient(circle, ${t.gold}40 0%, transparent 70%)`,
+              animation: 'rippleOut 0.4s ease-out',
+            }} />
+          )}
+          <div className="text-center z-10">
+            <div style={{ fontSize: isSmall ? '1.8rem' : screenSize === 'sm' ? '2.2rem' : '2.8rem' }}>📿</div>
+            <div className="font-bold" style={{ color: t.gold, fontSize: `${(isSmall ? 0.65 : 0.85) * fontScale}rem` }}>
               TAP
             </div>
           </div>
@@ -521,13 +548,13 @@ function App() {
       <div
         className="flex justify-between items-center rounded-2xl mx-auto flex-shrink-0"
         style={{
-          width: 'min(92%, 400px)',
-          padding: isSmall ? '0.4rem 0.5rem' : '0.55rem 1rem',
+          width: 'min(94%, 420px)',
+          padding: isSmall ? '0.35rem 0.4rem' : '0.5rem 0.8rem',
           backgroundColor: t.cardBg,
           border: `1px solid ${t.cardBorder}`,
-          backdropFilter: 'blur(10px)',
-          WebkitBackdropFilter: 'blur(10px)',
-          margin: '0.4rem auto',
+          backdropFilter: 'blur(12px)',
+          WebkitBackdropFilter: 'blur(12px)',
+          margin: '0.3rem auto',
         }}
       >
         {[
@@ -536,177 +563,338 @@ function App() {
           { value: totalAllTime, label: 'Total' },
         ].map((stat, i) => (
           <div key={i} className="text-center flex-1" style={i < 2 ? { borderRight: `1px solid ${t.cardBorder}` } : {}}>
-            <div className="font-bold" style={{ color: t.gold, fontSize: isSmall ? '0.8rem' : '1.05rem' }}>
+            <div className="font-bold" style={{ color: t.gold, fontSize: `${(isSmall ? 0.85 : 1.1) * fontScale}rem` }}>
               {stat.value}
             </div>
-            <div style={{ color: t.textMuted, fontSize: isSmall ? '0.45rem' : '0.65rem' }}>
+            <div style={{ color: t.textMuted, fontSize: `${(isSmall ? 0.5 : 0.65) * fontScale}rem` }}>
               {stat.label}
             </div>
           </div>
         ))}
       </div>
 
-      {/* Bottom Controls */}
+      {/* Bottom Controls with Labels */}
       <div
-        className="flex justify-center gap-3 flex-shrink-0"
+        className="flex justify-center gap-4 sm:gap-6 flex-shrink-0"
         style={{
-          padding: '0.6rem 0.75rem',
-          paddingBottom: 'max(0.6rem, env(safe-area-inset-bottom))',
+          padding: '0.5rem 0.75rem',
+          paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom))',
         }}
       >
         {[
-          { icon: '⚙️', action: () => setShowSettings(true), label: 'Sound' },
-          { icon: '📋', action: () => setShowLaps(true), label: 'Laps' },
-          { icon: '🔄', action: handleReset, label: 'Reset' },
+          { icon: '🔔', label: 'Sound', action: () => setShowSoundPanel(true) },
+          { icon: '📋', label: 'Lap', action: () => setShowLaps(true) },
+          { icon: '🔄', label: 'Reset', action: handleReset },
+          { icon: '⚙️', label: 'Settings', action: () => setShowSettings(true) },
         ].map((btn, i) => (
           <button
             key={i}
             onClick={btn.action}
-            className="rounded-full flex items-center justify-center transition-all active:scale-90"
-            style={{
-              width: isSmall ? '38px' : '46px',
-              height: isSmall ? '38px' : '46px',
-              backgroundColor: t.goldDim,
-              border: `1.5px solid ${t.goldBorder}`,
-            }}
-            aria-label={btn.label}
+            className="flex flex-col items-center gap-0.5 transition-all active:scale-90"
           >
-            <span style={{ fontSize: isSmall ? '0.95rem' : '1.2rem' }}>{btn.icon}</span>
+            <div
+              className="rounded-full flex items-center justify-center"
+              style={{
+                width: isSmall ? '40px' : '48px',
+                height: isSmall ? '40px' : '48px',
+                backgroundColor: t.goldDim,
+                border: `1.5px solid ${t.goldBorder}`,
+              }}
+            >
+              <span style={{ fontSize: isSmall ? '1rem' : '1.25rem' }}>{btn.icon}</span>
+            </div>
+            <span style={{
+              color: t.textMuted,
+              fontSize: isSmall ? '0.55rem' : '0.65rem',
+              fontWeight: 500,
+            }}>
+              {btn.label}
+            </span>
           </button>
         ))}
       </div>
 
-      {/* Settings Modal */}
+      {/* Sound Panel */}
+      {showSoundPanel && (
+        <Modal onClose={() => setShowSoundPanel(false)} t={t} isSmall={isSmall}>
+          <h2 className="font-bold text-center mb-3" style={{ color: t.gold, fontSize: isSmall ? '1rem' : '1.2rem' }}>
+            🔔 Sound
+          </h2>
+          <div className="space-y-1.5">
+            {SOUND_OPTIONS.map((option) => (
+              <button
+                key={option.value}
+                onClick={() => { setSoundType(option.value); if (option.value !== 'none') playSound(option.value); }}
+                className="w-full flex items-center gap-2.5 rounded-xl transition-all active:scale-[0.98]"
+                style={{
+                  padding: isSmall ? '0.5rem 0.7rem' : '0.65rem 0.9rem',
+                  backgroundColor: soundType === option.value ? t.accentSoft : t.cardBg,
+                  border: soundType === option.value ? `2px solid ${t.gold}` : `1px solid ${t.cardBorder}`,
+                }}
+              >
+                <span style={{ fontSize: '1.3rem' }}>{option.icon}</span>
+                <span className="font-medium flex-1 text-left" style={{
+                  color: soundType === option.value ? t.gold : t.textMuted,
+                  fontSize: isSmall ? '0.75rem' : '0.85rem',
+                }}>
+                  {option.label}
+                </span>
+                {soundType === option.value && (
+                  <span className="px-1.5 py-0.5 rounded-full font-semibold" style={{
+                    backgroundColor: t.gold, color: t.bg1, fontSize: '0.6rem',
+                  }}>Active</span>
+                )}
+              </button>
+            ))}
+          </div>
+        </Modal>
+      )}
+
+      {/* Settings Panel */}
       {showSettings && (
-        <div className="fixed inset-0 z-[90] flex items-center justify-center" style={{ padding: isSmall ? '0.75rem' : '1rem' }} onClick={() => setShowSettings(false)}>
-          <div className="absolute inset-0 backdrop-blur-sm" style={{ backgroundColor: t.overlay }} />
-          <div
-            className="relative z-10 w-full rounded-3xl overflow-y-auto"
-            style={{
-              maxWidth: 'min(92vw, 400px)',
-              maxHeight: '80dvh',
-              background: t.modalBg,
-              border: `2px solid ${t.goldBorder}`,
-              boxShadow: `0 20px 60px ${t.shadow}`,
-              padding: isSmall ? '0.9rem' : '1.3rem',
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h2 className="font-bold text-center mb-3" style={{ color: t.gold, fontSize: isSmall ? '1rem' : '1.2rem' }}>
-              🔊 Sound Settings
-            </h2>
-            <div className="space-y-1.5">
-              {SOUND_OPTIONS.map((option) => (
+        <Modal onClose={() => setShowSettings(false)} t={t} isSmall={isSmall}>
+          <h2 className="font-bold text-center mb-3" style={{ color: t.gold, fontSize: isSmall ? '1rem' : '1.2rem' }}>
+            ⚙️ Settings
+          </h2>
+
+          {/* Theme */}
+          <div className="mb-3">
+            <div className="font-semibold mb-1.5" style={{ color: t.textMuted, fontSize: isSmall ? '0.7rem' : '0.8rem' }}>THEME</div>
+            <div className="flex gap-2">
+              {(['dark', 'light', 'sepia'] as ThemeMode[]).map((mode) => (
                 <button
-                  key={option.value}
-                  onClick={() => { setSoundType(option.value); if (option.value !== 'none') playSound(option.value); }}
-                  className="w-full flex items-center gap-2.5 rounded-xl transition-all active:scale-[0.98]"
+                  key={mode}
+                  onClick={() => setTheme(mode)}
+                  className="flex-1 py-2 rounded-xl font-semibold transition-all active:scale-95"
                   style={{
-                    padding: isSmall ? '0.45rem 0.6rem' : '0.6rem 0.9rem',
-                    backgroundColor: soundType === option.value ? `${t.gold}22` : t.cardBg,
-                    border: soundType === option.value ? `2px solid ${t.gold}` : `1px solid ${t.cardBorder}`,
+                    backgroundColor: theme === mode ? t.gold : t.cardBg,
+                    color: theme === mode ? t.bg1 : t.textMuted,
+                    border: `1.5px solid ${theme === mode ? t.gold : t.cardBorder}`,
+                    fontSize: isSmall ? '0.7rem' : '0.8rem',
                   }}
                 >
-                  <span style={{ fontSize: '1.3rem' }}>{option.icon}</span>
-                  <span className="font-medium flex-1 text-left" style={{
-                    color: soundType === option.value ? t.gold : t.textMuted,
-                    fontSize: isSmall ? '0.7rem' : '0.82rem',
-                  }}>
-                    {option.label}
-                  </span>
-                  {soundType === option.value && (
-                    <span className="px-1.5 py-0.5 rounded-full font-semibold" style={{
-                      backgroundColor: t.gold, color: t.bg1, fontSize: '0.6rem',
-                    }}>
-                      Active
-                    </span>
-                  )}
+                  {mode === 'dark' ? '🌙 Dark' : mode === 'light' ? '☀️ Light' : '📜 Sepia'}
                 </button>
               ))}
             </div>
+          </div>
+
+          {/* Font Size */}
+          <div className="mb-3">
+            <div className="font-semibold mb-1.5" style={{ color: t.textMuted, fontSize: isSmall ? '0.7rem' : '0.8rem' }}>FONT SIZE</div>
+            <div className="flex gap-1.5">
+              {FONT_SIZES.map((size) => (
+                <button
+                  key={size.value}
+                  onClick={() => setFontSize(size.value)}
+                  className="flex-1 py-2 rounded-xl font-semibold transition-all active:scale-95"
+                  style={{
+                    backgroundColor: fontSize === size.value ? t.gold : t.cardBg,
+                    color: fontSize === size.value ? t.bg1 : t.textMuted,
+                    border: `1.5px solid ${fontSize === size.value ? t.gold : t.cardBorder}`,
+                    fontSize: size.value === 'small' ? '0.7rem' : size.value === 'medium' ? '0.8rem' : size.value === 'large' ? '0.95rem' : '1.1rem',
+                  }}
+                >
+                  {size.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Dhikr Selection */}
+          <div>
+            <div className="font-semibold mb-1.5" style={{ color: t.textMuted, fontSize: isSmall ? '0.7rem' : '0.8rem' }}>DHIKR</div>
             <button
-              onClick={() => setShowSettings(false)}
-              className="w-full mt-3 py-2 rounded-xl font-semibold transition-all active:scale-[0.98]"
-              style={{ backgroundColor: t.gold, color: t.bg1, fontSize: isSmall ? '0.8rem' : '0.9rem' }}
+              onClick={() => { setShowSettings(false); setShowDhikrPicker(true); }}
+              className="w-full py-2.5 rounded-xl font-semibold transition-all active:scale-[0.98]"
+              style={{
+                backgroundColor: t.accentSoft,
+                color: t.gold,
+                border: `1.5px solid ${t.goldBorder}`,
+                fontSize: isSmall ? '0.75rem' : '0.85rem',
+              }}
             >
-              Done
+              Change Dhikr → {currentDhikr?.transliteration}
             </button>
           </div>
-        </div>
+        </Modal>
+      )}
+
+      {/* Dhikr Picker */}
+      {showDhikrPicker && (
+        <Modal onClose={() => setShowDhikrPicker(false)} t={t} isSmall={isSmall}>
+          <h2 className="font-bold text-center mb-3" style={{ color: t.gold, fontSize: isSmall ? '1rem' : '1.2rem' }}>
+            📿 Select Dhikr
+          </h2>
+          <div className="space-y-1.5">
+            {DHIKR_LIST.map((dhikr) => (
+              <button
+                key={dhikr.id}
+                onClick={() => handleDhikrSelect(dhikr.id)}
+                className="w-full text-left rounded-xl transition-all active:scale-[0.98]"
+                style={{
+                  padding: isSmall ? '0.5rem 0.7rem' : '0.65rem 0.9rem',
+                  backgroundColor: selectedDhikr === dhikr.id ? t.accentSoft : t.cardBg,
+                  border: selectedDhikr === dhikr.id ? `2px solid ${t.gold}` : `1px solid ${t.cardBorder}`,
+                }}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex-1 min-w-0">
+                    <div className="font-semibold truncate" style={{ color: selectedDhikr === dhikr.id ? t.gold : t.text, fontSize: isSmall ? '0.75rem' : '0.85rem' }}>
+                      {dhikr.transliteration}
+                    </div>
+                    <div className="truncate" style={{ color: t.textDim, fontSize: isSmall ? '0.6rem' : '0.7rem' }}>
+                      {dhikr.meaning}
+                    </div>
+                  </div>
+                  {dhikr.arabic && (
+                    <div className="ml-2 flex-shrink-0" style={{ color: t.gold, fontSize: isSmall ? '0.9rem' : '1.1rem', direction: 'rtl' }}>
+                      {dhikr.arabic.slice(0, 15)}...
+                    </div>
+                  )}
+                </div>
+                {dhikr.id === 'custom' && selectedDhikr === 'custom' && (
+                  <input
+                    type="text"
+                    value={customDhikr}
+                    onChange={(e) => setCustomDhikr(e.target.value)}
+                    onClick={(e) => e.stopPropagation()}
+                    placeholder="Enter your dhikr..."
+                    className="w-full mt-2 px-2 py-1.5 rounded-lg text-left"
+                    style={{
+                      backgroundColor: t.bg1,
+                      color: t.text,
+                      border: `1px solid ${t.goldBorder}`,
+                      fontSize: isSmall ? '0.75rem' : '0.85rem',
+                      outline: 'none',
+                    }}
+                  />
+                )}
+              </button>
+            ))}
+          </div>
+        </Modal>
+      )}
+
+      {/* Target Custom Picker */}
+      {showTargetPicker && (
+        <Modal onClose={() => setShowTargetPicker(false)} t={t} isSmall={isSmall}>
+          <h2 className="font-bold text-center mb-3" style={{ color: t.gold, fontSize: isSmall ? '1rem' : '1.2rem' }}>
+            🎯 Custom Target
+          </h2>
+          <input
+            type="number"
+            min="1"
+            max="100000"
+            defaultValue={target}
+            id="custom-target-input"
+            className="w-full px-3 py-3 rounded-xl text-center font-bold"
+            style={{
+              backgroundColor: t.bg1,
+              color: t.gold,
+              border: `2px solid ${t.goldBorder}`,
+              fontSize: '1.5rem',
+              outline: 'none',
+            }}
+          />
+          <button
+            onClick={() => {
+              const input = document.getElementById('custom-target-input') as HTMLInputElement;
+              const val = parseInt(input?.value || '0');
+              if (val > 0) { setTarget(val); setCount(0); setCurrentLap(1); setLaps([]); }
+              setShowTargetPicker(false);
+            }}
+            className="w-full mt-3 py-2.5 rounded-xl font-semibold transition-all active:scale-[0.98]"
+            style={{ backgroundColor: t.gold, color: t.bg1, fontSize: isSmall ? '0.85rem' : '0.95rem' }}
+          >
+            Set Target
+          </button>
+        </Modal>
       )}
 
       {/* Laps Modal */}
       {showLaps && (
-        <div className="fixed inset-0 z-[90] flex items-center justify-center" style={{ padding: isSmall ? '0.75rem' : '1rem' }} onClick={() => setShowLaps(false)}>
-          <div className="absolute inset-0 backdrop-blur-sm" style={{ backgroundColor: t.overlay }} />
-          <div
-            className="relative z-10 w-full rounded-3xl overflow-y-auto"
-            style={{
-              maxWidth: 'min(92vw, 400px)',
-              maxHeight: '80dvh',
-              background: t.modalBg,
-              border: `2px solid ${t.goldBorder}`,
-              boxShadow: `0 20px 60px ${t.shadow}`,
-              padding: isSmall ? '0.9rem' : '1.3rem',
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h2 className="font-bold text-center mb-3" style={{ color: t.gold, fontSize: isSmall ? '1rem' : '1.2rem' }}>
-              📋 Lap History
-            </h2>
-            {laps.length === 0 ? (
-              <div className="text-center py-5">
-                <div style={{ fontSize: '2rem' }} className="mb-2">📿</div>
-                <p style={{ color: t.textMuted, fontSize: isSmall ? '0.7rem' : '0.82rem' }}>
-                  No completed laps yet
-                </p>
-                <p style={{ color: t.textDim, fontSize: isSmall ? '0.6rem' : '0.7rem' }} className="mt-1">
-                  Complete {target} counts to record a lap
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-1.5">
-                {[...laps].reverse().map((lap, index) => (
-                  <div key={index} className="flex items-center justify-between rounded-xl"
-                    style={{
-                      padding: isSmall ? '0.45rem 0.6rem' : '0.6rem 0.9rem',
-                      backgroundColor: t.cardBg,
-                      border: `1px solid ${t.cardBorder}`,
-                    }}>
-                    <div className="flex items-center gap-2">
-                      <div className="rounded-full flex items-center justify-center font-bold flex-shrink-0"
-                        style={{
-                          width: isSmall ? '24px' : '30px',
-                          height: isSmall ? '24px' : '30px',
-                          backgroundColor: t.gold, color: t.bg1,
-                          fontSize: isSmall ? '0.55rem' : '0.7rem',
-                        }}>
-                        {lap.lap}
+        <Modal onClose={() => setShowLaps(false)} t={t} isSmall={isSmall}>
+          <h2 className="font-bold text-center mb-3" style={{ color: t.gold, fontSize: isSmall ? '1rem' : '1.2rem' }}>
+            📋 Lap History
+          </h2>
+          {laps.length === 0 ? (
+            <div className="text-center py-5">
+              <div style={{ fontSize: '2.5rem' }} className="mb-2">📿</div>
+              <p style={{ color: t.textMuted, fontSize: isSmall ? '0.75rem' : '0.875rem' }}>No completed laps yet</p>
+              <p style={{ color: t.textDim, fontSize: isSmall ? '0.65rem' : '0.75rem' }} className="mt-1">
+                Complete {target} counts to record a lap
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-1.5">
+              {[...laps].reverse().map((lap, index) => (
+                <div key={index} className="flex items-center justify-between rounded-xl"
+                  style={{
+                    padding: isSmall ? '0.45rem 0.6rem' : '0.6rem 0.9rem',
+                    backgroundColor: t.cardBg,
+                    border: `1px solid ${t.cardBorder}`,
+                  }}>
+                  <div className="flex items-center gap-2">
+                    <div className="rounded-full flex items-center justify-center font-bold flex-shrink-0"
+                      style={{
+                        width: isSmall ? '26px' : '32px', height: isSmall ? '26px' : '32px',
+                        backgroundColor: t.gold, color: t.bg1, fontSize: isSmall ? '0.6rem' : '0.75rem',
+                      }}>
+                      {lap.lap}
+                    </div>
+                    <div>
+                      <div className="font-medium" style={{ color: t.gold, fontSize: isSmall ? '0.7rem' : '0.85rem' }}>
+                        {lap.target}x completed
                       </div>
-                      <div>
-                        <div className="font-medium" style={{ color: t.gold, fontSize: isSmall ? '0.65rem' : '0.8rem' }}>
-                          {lap.target}x completed
-                        </div>
-                        <div style={{ color: t.textDim, fontSize: isSmall ? '0.5rem' : '0.65rem' }}>
-                          {lap.timestamp.toLocaleTimeString()}
-                        </div>
+                      <div style={{ color: t.textDim, fontSize: isSmall ? '0.55rem' : '0.7rem' }}>
+                        {lap.timestamp.toLocaleTimeString()}
                       </div>
                     </div>
-                    <span style={{ color: t.gold, fontSize: '0.9rem' }}>✓</span>
                   </div>
-                ))}
-              </div>
-            )}
-            <button
-              onClick={() => setShowLaps(false)}
-              className="w-full mt-3 py-2 rounded-xl font-semibold transition-all active:scale-[0.98]"
-              style={{ backgroundColor: t.gold, color: t.bg1, fontSize: isSmall ? '0.8rem' : '0.9rem' }}
-            >
-              Close
-            </button>
-          </div>
-        </div>
+                  <span style={{ color: t.success, fontSize: '1rem' }}>✓</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </Modal>
       )}
+    </div>
+  );
+}
+
+// Reusable Modal Component
+function Modal({ children, onClose, t, isSmall }: {
+  children: React.ReactNode;
+  onClose: () => void;
+  t: typeof THEMES.dark;
+  isSmall: boolean;
+}) {
+  return (
+    <div className="fixed inset-0 z-[90] flex items-center justify-center" style={{ padding: isSmall ? '0.6rem' : '1rem' }} onClick={onClose}>
+      <div className="absolute inset-0 backdrop-blur-md" style={{ backgroundColor: t.overlay, animation: 'fadeIn 0.2s ease-out' }} />
+      <div
+        className="relative z-10 w-full rounded-3xl overflow-y-auto"
+        style={{
+          maxWidth: 'min(94vw, 420px)',
+          maxHeight: '82dvh',
+          background: t.modalBg,
+          border: `2px solid ${t.goldBorder}`,
+          boxShadow: `0 25px 70px ${t.shadow}, 0 0 50px ${t.goldDim}`,
+          padding: isSmall ? '0.9rem' : '1.3rem',
+          animation: 'slideUp 0.25s ease-out',
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {children}
+        <button
+          onClick={onClose}
+          className="w-full mt-3 py-2.5 rounded-xl font-semibold transition-all active:scale-[0.98]"
+          style={{ backgroundColor: t.gold, color: t.bg1, fontSize: isSmall ? '0.8rem' : '0.9rem' }}
+        >
+          Close
+        </button>
+      </div>
     </div>
   );
 }

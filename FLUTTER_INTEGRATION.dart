@@ -1,244 +1,164 @@
 // ============================================================================
-// FLUTTER INTEGRATION GUIDE - Digital Tasbeeh Counter
+// FLUTTER INTEGRATION GUIDE - Digital Tasbeeh Counter (Enhanced)
 // ============================================================================
-// 
+//
 // This web app is designed to work seamlessly inside a Flutter WebView.
-// Below are integration examples for popular Flutter WebView packages.
-//
+// 
 // ============================================================================
-// OPTION 1: webview_flutter (Official Flutter Plugin)
-// ============================================================================
-//
-// Add to pubspec.yaml:
-//   dependencies:
-//     webview_flutter: ^4.4.2
-//
-// Flutter code:
-//
-// import 'dart:convert';
-// import 'package:flutter/material.dart';
-// import 'package:webview_flutter/webview_flutter.dart';
-//
-// class TasbeehWebView extends StatefulWidget {
-//   const TasbeehWebView({super.key});
-//   @override
-//   State<TasbeehWebView> createState() => _TasbeehWebViewState();
-// }
-//
-// class _TasbeehWebViewState extends State<TasbeehWebView> {
-//   late final WebViewController controller;
-//   int _count = 0;
-//   int _totalLaps = 0;
-//
-//   @override
-//   void initState() {
-//     super.initState();
-//     controller = WebViewController()
-//       ..setJavaScriptMode(JavaScriptMode.unrestricted)
-//       ..setBackgroundColor(const Color(0xFF00160D))
-//       ..setNavigationDelegate(NavigationDelegate(
-//         onPageFinished: (url) {
-//           // Enable haptic feedback from Flutter side
-//           controller.runJavaScript('''
-//             window.FlutterWebView = {
-//               postMessage: function(msg) {
-//                 var data = JSON.parse(msg);
-//                 // Handle messages from the web app
-//                 if (data.type === 'haptic') {
-//                   // Trigger native Flutter haptic
-//                   HapticFeedback.lightImpact();
-//                 }
-//               }
-//             };
-//           ''');
-//         },
-//       ))
-//       ..addJavaScriptChannel(
-//         'FlutterWebView',
-//         onMessageReceived: (JavaScriptMessage message) {
-//           final data = jsonDecode(message.message);
-//           switch (data['type']) {
-//             case 'count':
-//               setState(() => _count = data['data']['count']);
-//               break;
-//             case 'lapComplete':
-//               setState(() => _totalLaps++);
-//               HapticFeedback.heavyImpact();
-//               break;
-//             case 'themeChanged':
-//               // Update Flutter app theme if needed
-//               break;
-//             case 'haptic':
-//               if (data['data']['type'] == 'heavy') {
-//                 HapticFeedback.heavyImpact();
-//               } else {
-//                 HapticFeedback.lightImpact();
-//               }
-//               break;
-//           }
-//         },
-//       )
-//       ..loadFlutterAsset('assets/tasbeeh/index.html');
-//       // OR load from URL:
-//       // ..loadRequest(Uri.parse('https://your-tasbeeh-app.com'));
-//   }
-//
-//   @override
-//   Widget build(BuildContext context) {
-//     return Scaffold(
-//       appBar: AppBar(
-//         title: const Text('Tasbeeh Counter'),
-//         backgroundColor: const Color(0xFF00160D),
-//         foregroundColor: const Color(0xFFD4AF37),
-//       ),
-//       body: WebViewWidget(controller: controller),
-//       // Optional: Native Flutter controls alongside WebView
-//       bottomNavigationBar: BottomAppBar(
-//         child: Row(
-//           mainAxisAlignment: MainAxisAlignment.spaceAround,
-//           children: [
-//             Text('Count: $_count'),
-//             Text('Laps: $_totalLaps'),
-//             IconButton(
-//               icon: const Icon(Icons.refresh),
-//               onPressed: () {
-//                 controller.runJavaScript('localStorage.clear(); location.reload();');
-//               },
-//             ),
-//           ],
-//         ),
-//       ),
-//     );
-//   }
-// }
-//
-// ============================================================================
-// OPTION 2: flutter_inappwebview (Advanced Features)
+// FEATURES
 // ============================================================================
 //
-// Add to pubspec.yaml:
-//   dependencies:
-//     flutter_inappwebview: ^6.0.0
-//
-// Flutter code:
-//
-// import 'package:flutter_inappwebview/flutter_inappwebview.dart';
-//
-// class TasbeehInAppWebView extends StatefulWidget {
-//   const TasbeehInAppWebView({super.key});
-//   @override
-//   State<TasbeehInAppWebView> createState() => _TasbeehInAppWebViewState();
-// }
-//
-// class _TasbeehInAppWebViewState extends State<TasbeehInAppWebView> {
-//   InAppWebViewController? webViewController;
-//
-//   @override
-//   Widget build(BuildContext context) {
-//     return InAppWebView(
-//       initialUrlRequest: URLRequest(
-//         url: WebUri('https://your-tasbeeh-app.com'),
-//       ),
-//       initialSettings: InAppWebViewSettings(
-//         javaScriptEnabled: true,
-//         transparentBackground: true,
-//         supportZoom: false,
-//         useWideViewPort: true,
-//         // Flutter WebView specific
-//         allowsBackForwardNavigationGestures: false,
-//         mediaPlaybackRequiresUserGesture: false,
-//       ),
-//       onWebViewCreated: (controller) {
-//         webViewController = controller;
-//         // Register handler for web app messages
-//         controller.addJavaScriptHandler(
-//           handlerName: 'TasbeehEvent',
-//           callback: (args) {
-//             if (args.isNotEmpty) {
-//               final data = jsonDecode(args[0] as String);
-//               // Handle events from web app
-//               switch (data['type']) {
-//                 case 'haptic':
-//                   HapticFeedback.lightImpact();
-//                   break;
-//                 case 'lapComplete':
-//                   HapticFeedback.heavyImpact();
-//                   break;
-//                 case 'count':
-//                   print('Count: ${data['data']['count']}');
-//                   break;
-//               }
-//             }
-//           },
-//         );
-//       },
-//       onLoadStop: (controller, url) async {
-//         // Send theme preference from Flutter to web app
-//         final isDark = Theme.of(context).brightness == Brightness.dark;
-//         await controller.evaluateJavascript(source: '''
-//           window.postMessage({
-//             channel: "flutter-tasbeeh",
-//             action: "setTheme",
-//             payload: "${isDark ? 'dark' : 'light'}"
-//           }, "*");
-//         ''');
-//       },
-//     );
-//   }
-// }
-//
-// ============================================================================
-// OPTION 3: Simple WebView with Native Haptics
-// ============================================================================
-//
-// For a simpler integration where Flutter handles haptics natively:
-//
-// class SimpleTasbeehScreen extends StatelessWidget {
-//   @override
-//   Widget build(BuildContext context) {
-//     return Scaffold(
-//       body: WebViewWidget(
-//         controller: WebViewController()
-//           ..setJavaScriptMode(JavaScriptMode.unrestricted)
-//           ..setBackgroundColor(const Color(0xFF00160D))
-//           ..loadFlutterAsset('assets/tasbeeh/index.html'),
-//       ),
-//     );
-//   }
-// }
+// ✅ Dark / Light / Sepia themes (persisted in localStorage)
+// ✅ Font size preference (Small, Medium, Large, X-Large)
+// ✅ Dhikr selection with 10 presets + Custom option
+// ✅ Target presets: 33, 99, 100, 300, 500, 1000, 10000 + Custom
+// ✅ 5 synthesized sounds (default: Silent)
+// ✅ Lap tracking with history
+// ✅ Mobile haptic vibration
+// ✅ Full responsive design for all devices
+// ✅ Flutter WebView compatible (3 bridge methods)
 //
 // ============================================================================
 // JAVASCRIPT BRIDGE API
 // ============================================================================
 //
-// The web app sends these messages to Flutter:
+// MESSAGES FROM WEB → FLUTTER:
 //
-// { "type": "appReady", "data": {...} }           - App loaded
-// { "type": "count", "data": { "count": N } }     - Count changed
-// { "type": "lapComplete", "data": {...} }        - Target reached
-// { "type": "themeChanged", "data": { "theme": "dark"|"light" } }
-// { "type": "haptic", "data": { "type": "light"|"heavy", "duration": N } }
-// { "type": "reset", "data": {} }                 - Counter reset
-// { "type": "targetChanged", "data": { "target": N } }
+// { "type": "appReady", "data": { "theme": "dark", "fontSize": "medium" } }
+// { "type": "count", "data": { "count": 15, "target": 33, "totalAllTime": 150 } }
+// { "type": "lapComplete", "data": { "lap": 1, "target": 33 } }
+// { "type": "themeChanged", "data": { "theme": "dark"|"light"|"sepia" } }
+// { "type": "haptic", "data": { "type": "light"|"heavy", "duration": 30 } }
+// { "type": "reset", "data": {} }
+// { "type": "targetChanged", "data": { "target": 100 } }
 //
-// Flutter can send these messages to the web app:
+// MESSAGES FROM FLUTTER → WEB:
 //
-// { "channel": "flutter-tasbeeh", "action": "setTheme", "payload": "dark"|"light" }
-// { "channel": "flutter-tasbeeh", "action": "reset", "payload": null }
-// { "channel": "flutter-tasbeeh", "action": "getState", "payload": null }
+// window.postMessage({
+//   channel: "flutter-tasbeeh",
+//   action: "setTheme",
+//   payload: "dark" | "light" | "sepia"
+// }, "*");
+//
+// window.postMessage({
+//   channel: "flutter-tasbeeh",
+//   action: "reset",
+//   payload: null
+// }, "*");
 //
 // ============================================================================
-// BUILD FOR FLUTTER
+// FLUTTER CODE EXAMPLE (webview_flutter)
 // ============================================================================
 //
-// 1. Build the web app: npm run build
-// 2. Copy the 'dist/' folder to your Flutter project:
-//    flutter_project/assets/tasbeeh/
+// import 'dart:convert';
+// import 'package:flutter/material.dart';
+// import 'package:flutter/services.dart';
+// import 'package:webview_flutter/webview_flutter.dart';
+//
+// class TasbeehScreen extends StatefulWidget {
+//   const TasbeehScreen({super.key});
+//   @override
+//   State<TasbeehScreen> createState() => _TasbeehScreenState();
+// }
+//
+// class _TasbeehScreenState extends State<TasbeehScreen> {
+//   late final WebViewController _controller;
+//   int _count = 0;
+//   int _totalLaps = 0;
+//   ThemeMode _themeMode = ThemeMode.dark;
+//
+//   @override
+//   void initState() {
+//     super.initState();
+//     
+//     _controller = WebViewController()
+//       ..setJavaScriptMode(JavaScriptMode.unrestricted)
+//       ..setBackgroundColor(const Color(0xFF00160D))
+//       ..addJavaScriptChannel(
+//         'FlutterWebView',
+//         onMessageReceived: (JavaScriptMessage message) {
+//           final data = jsonDecode(message.message);
+//           _handleFlutterMessage(data);
+//         },
+//       )
+//       ..loadFlutterAsset('assets/tasbeeh/index.html');
+//   }
+//
+//   void _handleFlutterMessage(Map<String, dynamic> data) {
+//     switch (data['type']) {
+//       case 'count':
+//         setState(() => _count = data['data']['count']);
+//         break;
+//       case 'lapComplete':
+//         setState(() => _totalLaps++);
+//         HapticFeedback.heavyImpact();
+//         break;
+//       case 'haptic':
+//         if (data['data']['type'] == 'heavy') {
+//           HapticFeedback.heavyImpact();
+//         } else {
+//           HapticFeedback.lightImpact();
+//         }
+//         break;
+//       case 'themeChanged':
+//         final theme = data['data']['theme'];
+//         setState(() {
+//           _themeMode = theme == 'light' ? ThemeMode.light 
+//                      : theme == 'sepia' ? ThemeMode.light 
+//                      : ThemeMode.dark;
+//         });
+//         break;
+//     }
+//   }
+//
+//   void _sendToWeb(String action, dynamic payload) {
+//     _controller.runJavaScript('''
+//       window.postMessage({
+//         channel: "flutter-tasbeeh",
+//         action: "$action",
+//         payload: ${payload == null ? 'null' : '"$payload"'}
+//       }, "*");
+//     ''');
+//   }
+//
+//   @override
+//   Widget build(BuildContext context) {
+//     return Theme(
+//       data: ThemeData(brightness: _themeMode == ThemeMode.light 
+//           ? Brightness.light : Brightness.dark),
+//       child: Scaffold(
+//         appBar: AppBar(
+//           title: const Text('Tasbeeh Counter'),
+//           actions: [
+//             IconButton(
+//               icon: const Icon(Icons.refresh),
+//               onPressed: () => _sendToWeb('reset', null),
+//             ),
+//           ],
+//         ),
+//         body: WebViewWidget(controller: _controller),
+//       ),
+//     );
+//   }
+// }
+//
+// ============================================================================
+// BUILD & DEPLOY FOR FLUTTER
+// ============================================================================
+//
+// 1. Build the web app:
+//    npm run build
+//
+// 2. Copy dist/ folder to Flutter project:
+//    cp -r dist/* flutter_project/assets/tasbeeh/
+//
 // 3. Add to pubspec.yaml:
 //    flutter:
 //      assets:
 //        - assets/tasbeeh/
 //        - assets/tasbeeh/assets/
-// 4. Load with: controller.loadFlutterAsset('assets/tasbeeh/index.html')
+//
+// 4. Load in WebView:
+//    controller.loadFlutterAsset('assets/tasbeeh/index.html')
 //
 // ============================================================================

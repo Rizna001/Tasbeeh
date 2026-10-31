@@ -1,0 +1,255 @@
+@import "tailwindcss";
+
+/* ===== ROOT VARIABLES ===== */
+:root {
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+}
+
+/* ===== THEME TRANSITIONS ===== */
+html {
+  transition: background-color 0.5s ease, color 0.5s ease;
+}
+
+html[data-theme="dark"] { color-scheme: dark; }
+html[data-theme="light"] { color-scheme: light; }
+html[data-theme="sepia"] { color-scheme: dark; }
+
+/* ===== GLOBAL RESET ===== */
+*, *::before, *::after {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+}
+
+html {
+  touch-action: manipulation;
+  height: 100dvh;
+  height: 100vh;
+  overflow: hidden;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+html, body, #root {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  height: 100dvh;
+  overflow: hidden;
+}
+
+body {
+  overscroll-behavior: none;
+  position: fixed;
+  width: 100%;
+  height: 100%;
+  -webkit-overflow-scrolling: touch;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* ===== SAFE AREA ===== */
+@supports (padding: max(0px)) {
+  .safe-top { padding-top: max(0.5rem, var(--safe-top)); }
+  .safe-bottom { padding-bottom: max(0.5rem, var(--safe-bottom)); }
+  .safe-x { padding-left: max(0.5rem, var(--safe-left)); padding-right: max(0.5rem, var(--safe-right)); }
+}
+
+/* ===== BUTTON RESET ===== */
+button {
+  -webkit-appearance: none;
+  appearance: none;
+  background: none;
+  cursor: pointer;
+  font-family: inherit;
+  border: none;
+  outline: none;
+  touch-action: manipulation;
+}
+
+button:focus-visible {
+  outline: 2px solid #977529;
+  outline-offset: 2px;
+}
+
+input {
+  -webkit-appearance: none;
+  appearance: none;
+  font-family: inherit;
+}
+
+input:focus { outline: none; }
+
+/* ===== SCROLLBAR ===== */
+::-webkit-scrollbar { width: 4px; height: 0; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(151, 117, 41, 0.3); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(151, 117, 41, 0.5); }
+
+.overflow-x-auto::-webkit-scrollbar { display: none; }
+.overflow-x-auto { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* ===== TABULAR NUMS ===== */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+
+/* ===== ANIMATIONS ===== */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(30px) scale(0.95); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes celebPop {
+  0% { transform: scale(0.3); opacity: 0; }
+  50% { transform: scale(1.15); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes rippleOut {
+  0% { transform: scale(0); opacity: 1; }
+  100% { transform: scale(2.5); opacity: 0; }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+@keyframes countPop {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+  100% { transform: scale(1); }
+}
+
+/* ===== ICON ANIMATIONS ===== */
+
+/* Tasbeeh beads - gentle rotation */
+@keyframes tasbeehRotate {
+  0%, 100% { transform: rotate(0deg); }
+  50% { transform: rotate(5deg); }
+}
+
+.animate-tasbeeh {
+  animation: tasbeehRotate 3s ease-in-out infinite;
+}
+
+/* Bell swing */
+@keyframes bellSwing {
+  0%, 100% { transform: rotate(0deg); }
+  25% { transform: rotate(8deg); }
+  75% { transform: rotate(-8deg); }
+}
+
+.animate-bell {
+  animation: bellSwing 1.5s ease-in-out infinite;
+  transform-origin: top center;
+}
+
+/* Sound waves */
+@keyframes wave {
+  0%, 100% { opacity: 0; transform: translateX(0); }
+  50% { opacity: 1; transform: translateX(2px); }
+}
+
+.animate-wave-1 { animation: wave 1s ease-in-out infinite; }
+.animate-wave-2 { animation: wave 1s ease-in-out infinite 0.2s; }
+
+/* Gear rotation */
+@keyframes gearSpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.animate-gear {
+  animation: gearSpin 4s linear infinite;
+}
+
+/* Slow spin for reset */
+.animate-spin-slow {
+  animation: gearSpin 2s linear infinite;
+}
+
+/* Sparkle animation */
+@keyframes sparkle {
+  0%, 100% { transform: scale(1) rotate(0deg); opacity: 1; }
+  25% { transform: scale(1.1) rotate(5deg); opacity: 0.8; }
+  50% { transform: scale(0.95) rotate(-5deg); opacity: 1; }
+  75% { transform: scale(1.05) rotate(3deg); opacity: 0.9; }
+}
+
+.animate-sparkle {
+  animation: sparkle 2s ease-in-out infinite;
+}
+
+/* Bead pulse for tasbeeh icon */
+@keyframes beadPulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.15); opacity: 0.8; }
+}
+
+.animate-bead-1 { animation: beadPulse 2s ease-in-out infinite 0s; }
+.animate-bead-2 { animation: beadPulse 2s ease-in-out infinite 0.15s; }
+.animate-bead-3 { animation: beadPulse 2s ease-in-out infinite 0.3s; }
+.animate-bead-4 { animation: beadPulse 2s ease-in-out infinite 0.45s; }
+.animate-bead-5 { animation: beadPulse 2s ease-in-out infinite 0.6s; }
+.animate-bead-6 { animation: beadPulse 2s ease-in-out infinite 0.75s; }
+.animate-bead-7 { animation: beadPulse 2s ease-in-out infinite 0.9s; }
+.animate-bead-8 { animation: beadPulse 2s ease-in-out infinite 1.05s; }
+
+/* ===== RESPONSIVE BREAKPOINTS ===== */
+@media (max-width: 359px) { html { font-size: 13px; } }
+@media (min-width: 360px) and (max-width: 639px) { html { font-size: 14px; } }
+@media (min-width: 640px) and (max-width: 767px) { html { font-size: 15px; } }
+@media (min-width: 768px) and (max-width: 1023px) { html { font-size: 16px; } }
+@media (min-width: 1024px) and (max-width: 1439px) { html { font-size: 16px; } }
+@media (min-width: 1440px) { html { font-size: 17px; } }
+@media (min-width: 1920px) { html { font-size: 18px; } }
+
+@media (max-height: 500px) and (orientation: landscape) {
+  html, body, #root { height: 100dvh; height: 100vh; }
+}
+
+/* ===== FLUTTER WEBVIEW ===== */
+@supports (-webkit-overflow-scrolling: touch) {
+  body { position: fixed; top: 0; left: 0; right: 0; bottom: 0; }
+}
+
+html { overscroll-behavior: none; }
+
+input, textarea, select {
+  font-size: 16px !important;
+}
+
+/* ===== UTILITIES ===== */
+.no-select {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+@media print {
+  body { background: white !important; color: black !important; }
+}
+
+/* Apply Amiri for Arabic text */
+[dir="rtl"], .arabic-text {
+  font-family: 'Amiri', 'Scheherazade New', 'Traditional Arabic', 'Noto Naskh Arabic', serif;
+}
